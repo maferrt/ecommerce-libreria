@@ -641,13 +641,184 @@ body {
   animation: mobile-menu-enter 240ms ease both;
 }
 
-.footer-float-one {
-  animation: float-soft 5s ease-in-out infinite;
+.footer-sprites-grid {
+  margin-top: 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
 }
 
-.footer-float-two {
-  animation: float-soft 6s ease-in-out infinite;
-  animation-delay: 1s;
+.footer-sprite-link {
+  position: relative;
+  display: flex;
+  min-height: 6.5rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 1.25rem;
+  background: rgba(246, 235, 217, 0.58);
+  color: var(--mel-brown);
+  text-decoration: none;
+  box-shadow: 0 10px 22px rgba(82, 31, 18, 0.08);
+  transition:
+    transform 220ms ease,
+    background-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.footer-sprite-link:hover {
+  transform: translateY(-6px) rotate(-2deg);
+  background: rgba(246, 235, 217, 0.9);
+  box-shadow: 0 16px 30px rgba(82, 31, 18, 0.14);
+}
+
+.footer-sprite-image-wrapper {
+  display: flex;
+  height: 4.3rem;
+  width: 4.3rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background:
+    radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.78),
+      rgba(248, 225, 193, 0.36)
+    );
+}
+
+.footer-sprite-image {
+  height: 4rem;
+  width: 4rem;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 8px 8px rgba(82, 31, 18, 0.18));
+  animation: footer-sprite-bounce 3.4s ease-in-out infinite;
+}
+
+.footer-sprite-link:nth-child(2n) .footer-sprite-image {
+  animation-delay: 0.4s;
+}
+
+.footer-sprite-link:nth-child(3n) .footer-sprite-image {
+  animation-delay: 0.8s;
+}
+
+.footer-sprite-name {
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.74rem;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+}
+
+/* =========================
+   FOOTER - SPRITES 8 BIT
+========================= */
+
+.pixel-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.pixel-interaction-title {
+  width: 100%;
+  margin: 0;
+  text-align: center;
+  color: var(--mel-brown);
+  font-family: var(--font-cormorant), serif;
+  font-size: 1.65rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.pixel-interaction-title::after {
+  content: "";
+  display: block;
+  width: 95px;
+  height: 2px;
+  margin: 0.35rem auto 0;
+  border-radius: 999px;
+  background-color: var(--mel-caramel);
+}
+
+.pixel-team {
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Base de cada sprite */
+.pixel-member {
+  --sprite-size: clamp(58px, 5vw, 82px);
+
+  display: block;
+  width: var(--sprite-size);
+  height: var(--sprite-size);
+  flex: 0 0 var(--sprite-size);
+
+  background-image: var(--sprite);
+  background-repeat: no-repeat;
+  background-size: calc(var(--sprite-size) * var(--frames)) var(--sprite-size);
+
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+
+  animation: pixel-animation var(--speed, 1s) steps(var(--frames)) infinite;
+  transform-origin: bottom center;
+
+  filter: drop-shadow(0 8px 8px rgba(82, 31, 18, 0.18));
+
+  transition:
+    transform 220ms ease,
+    filter 220ms ease;
+}
+
+.pixel-member:hover {
+  transform: translateY(-6px) scale(1.08);
+  filter: drop-shadow(0 12px 12px rgba(82, 31, 18, 0.25));
+}
+
+@keyframes pixel-animation {
+  from {
+    background-position-x: 0;
+  }
+
+  to {
+    background-position-x: calc(var(--sprite-size) * var(--frames) * -1);
+  }
+}
+
+/* Ajuste de cada integrante */
+.pixel-mafer {
+  --sprite: url("/images/sprites/maf1-9.png");
+  --frames: 9;
+  --speed: 1s;
+}
+
+.pixel-ilse {
+  --sprite: url("/images/sprites/adr1.png");
+  --frames: 9;
+  --speed: 1.05s;
+}
+
+@keyframes footer-sprite-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-0.35rem);
+  }
 }
 
 @keyframes page-enter {
@@ -788,6 +959,16 @@ body {
   .hero-carousel-shell {
     padding: 1.2rem;
     border-radius: 1.7rem;
+  }
+
+  .footer-sprites-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-sprites-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

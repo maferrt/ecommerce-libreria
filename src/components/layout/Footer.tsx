@@ -9,92 +9,99 @@ const footerLinks = [
   { href: "/contacto", label: "Contacto" },
 ];
 
-const socialLinks = [
+const teamSprites = [
   {
-    href: "https://github.com/mafernandarodrigueztdev-byte",
-    label: "GitHub de Mafer",
-    emoji: "🌷",
+    name: "Mafer",
+    role: "Desarrolladora",
+    github: "https://github.com/mafernandarodrigueztdev-byte",
+    spriteClass: "pixel-mafer",
   },
   {
-    href: "https://www.linkedin.com/in/maria-fernanda-rodriguez-trinidad-926346396/",
-    label: "LinkedIn de Mafer",
-    emoji: "💼",
+    name: "Adri",
+    role: "Desarrolladora",
+    github: "https://github.com/iladricg14-lab",
+    spriteClass: "pixel-ilse",
   },
 ];
 
 export function Footer() {
   return (
-    <footer className="relative mt-24 overflow-hidden border-t border-[rgba(82,31,18,0.12)] bg-[rgba(248,225,193,0.72)] px-4 py-10 backdrop-blur-md">
-      <div className="pointer-events-none absolute left-8 top-8 text-3xl opacity-40 footer-float-one">
+    <footer className="relative mt-24 overflow-hidden border-t border-[rgba(82,31,18,0.12)] bg-[rgba(248,225,193,0.72)] px-4 py-12 backdrop-blur-md">
+      <div className="pointer-events-none absolute left-10 top-8 text-4xl opacity-20 footer-float-one">
         📚
       </div>
-      <div className="pointer-events-none absolute bottom-8 right-10 text-3xl opacity-40 footer-float-two">
+
+      <div className="pointer-events-none absolute bottom-10 right-12 text-4xl opacity-20 footer-float-two">
         ✨
       </div>
 
-      <div className="mx-auto grid max-w-7xl gap-10 md:grid-cols-[1.2fr_0.8fr_1fr] md:items-center">
+      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.1fr_0.8fr_1.4fr]">
         <div>
-          <Link href="/" className="inline-flex items-center">
-            <Image
-              src="/images/icons/logo-mel-horizontal.png"
-              alt="Mundo Entre Libros"
-              width={260}
-              height={120}
-              className="h-auto w-56 transition-transform duration-300 hover:scale-105"
-            />
+          <Link href="/" className="inline-flex items-center gap-3">
+            <div className="relative h-14 w-14 overflow-hidden rounded-full bg-[var(--mel-paper)] shadow-md">
+              <Image
+                src="/images/icons/logo-mel.png"
+                alt="Logo Mundo Entre Libros"
+                fill
+                sizes="56px"
+                className="object-contain p-1.5"
+              />
+            </div>
+
+            <div>
+              <p className="font-serif text-2xl font-black leading-none text-[var(--mel-brown)]">
+                Mundo
+              </p>
+              <p className="font-serif text-xl font-bold leading-none text-[var(--mel-caramel)]">
+                Entre Libros
+              </p>
+            </div>
           </Link>
 
-          <p className="mt-4 max-w-md font-sans text-sm leading-6 text-[var(--mel-brown-soft)]">
-            Un espacio digital para descubrir libros, crear comunidad lectora y
-            vivir la lectura de una forma más interactiva.
+          <p className="mt-5 max-w-sm font-sans text-sm leading-7 text-[var(--mel-brown-soft)]">
+            Un espacio literario para descubrir libros, compartir opiniones y
+            conectar con más lectores.
           </p>
         </div>
 
-        <div>
-          <h2 className="font-serif text-2xl font-bold text-[var(--mel-brown)]">
+        <nav aria-label="Enlaces del sitio">
+          <h2 className="font-serif text-2xl font-black text-[var(--mel-brown)]">
             Explora
           </h2>
 
-          <ul className="mt-4 grid gap-2">
+          <div className="mt-4 grid gap-3">
             {footerLinks.map((link) => (
-              <li key={link.href}>
-                <Link href={link.href} className="footer-link">
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="rounded-[2rem] border border-white/50 bg-[rgba(246,235,217,0.75)] p-6 shadow-[0_16px_35px_rgba(82,31,18,0.10)]">
-          <p className="font-serif text-2xl font-bold text-[var(--mel-brown)]">
-            ¡Pasa a saludar!
-          </p>
-
-          <p className="mt-2 font-sans text-sm leading-6 text-[var(--mel-brown-soft)]">
-            Esta versión individual está pensada para practicar, mejorar la
-            arquitectura y darle más vida al proyecto.
-          </p>
-
-          <div className="mt-5 flex flex-wrap gap-3">
-            {socialLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="social-bubble"
-                aria-label={link.label}
-              >
-                <span>{link.emoji}</span>
-              </a>
+              <Link key={link.href} href={link.href} className="footer-link">
+                {link.label}
+              </Link>
             ))}
           </div>
-        </div>
+        </nav>
+
+        <section className="pixel-section" aria-labelledby="pixel-team-title">
+          <h2 id="pixel-team-title" className="pixel-interaction-title">
+            ¡Pasa a saludarnos!
+          </h2>
+
+          <div className="pixel-team">
+            {teamSprites.map((member) => (
+              <a
+                key={member.name}
+                href={member.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`pixel-member ${member.spriteClass}`}
+                aria-label={`Ver GitHub de ${member.name}`}
+                title={member.name}
+              />
+            ))}
+          </div>
+        </section>
       </div>
 
-      <div className="mx-auto mt-10 max-w-7xl border-t border-[rgba(82,31,18,0.12)] pt-5 text-center font-sans text-sm text-[var(--mel-brown-soft)]">
-        <p>© 2026 Mundo Entre Libros — Versión Full Stack Individual</p>
+      <div className="mx-auto mt-10 flex max-w-7xl flex-col gap-3 border-t border-[rgba(82,31,18,0.12)] pt-6 text-center font-sans text-xs font-semibold text-[var(--mel-brown-soft)] sm:flex-row sm:items-center sm:justify-between sm:text-left">
+        <p>© 2026 Mundo Entre Libros. Todos los derechos reservados.</p>
+        <p>Hecho con café, libros y mucho código.</p>
       </div>
     </footer>
   );

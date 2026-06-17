@@ -22,11 +22,17 @@ const teamSprites = [
     github: "https://github.com/iladricg14-lab",
     spriteClass: "pixel-ilse",
   },
+  {
+    name: "Rodrigi",
+    role: "Desarrollador",
+    github: "https://github.com/Rock2612",
+    spriteClass: "pixel-rodrigo",
+  },
 ];
 
 export function Footer() {
   return (
-    <footer className="relative mt-24 overflow-hidden border-t border-[rgba(82,31,18,0.12)] bg-[rgba(248,225,193,0.72)] px-4 py-12 backdrop-blur-md">
+    <footer className="relative mt-10 overflow-hidden border-t border-[rgba(82,31,18,0.12)] bg-[rgba(248,225,193,0.72)] px-4 py-12 backdrop-blur-md">
       <div className="pointer-events-none absolute left-10 top-8 text-4xl opacity-20 footer-float-one">
         📚
       </div>

@@ -29,7 +29,7 @@ type HeroSlide = {
 
 const heroSlides: HeroSlide[] = [
   {
-    eyebrow: "Versión Full Stack Individual",
+    eyebrow: "Versión Full Stack Mejorada",
     title: "Bienvenida a Mundo Entre Libros",
     highlight: "tu espacio lector",
     description:
@@ -138,7 +138,7 @@ export function HomeHero() {
                 {activeSlide.eyebrow}
               </div>
 
-              <h1 className="mt-5 max-w-'2xl font-serif text-4xl font-black leading-[1.04] text-[var(--mel-brown)] sm:text-5xl lg:text-[3.25rem]">
+              <h1 className="mt-5 max-w-2xl font-serif text-4xl font-black leading-[1.04] text-[var(--mel-brown)] sm:text-5xl lg:text-[3.25rem]">
                 {activeSlide.title}
                 <span className="block text-[var(--mel-caramel)]">
                   {activeSlide.highlight}
@@ -149,7 +149,7 @@ export function HomeHero() {
                 {activeSlide.description}
               </p>
 
-              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <div className="hero-actions">
                 <Link href={activeSlide.primaryHref} className="hero-primary-button">
                   {activeSlide.primaryLabel}
                   <ArrowRight size={18} />

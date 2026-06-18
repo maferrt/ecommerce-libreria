@@ -1,0 +1,536 @@
+.page {
+  margin: 0 auto;
+  max-width: 78rem;
+  overflow-x: clip;
+  padding: 2rem 1rem 4rem;
+}
+
+.authHero,
+.profileHero {
+  display: grid;
+  gap: 2rem;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 2.25rem;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.68), transparent 24rem),
+    linear-gradient(135deg, rgba(246, 235, 217, 0.92), rgba(248, 225, 193, 0.66));
+  padding: 2rem;
+  box-shadow: 0 24px 55px rgba(82, 31, 18, 0.13);
+}
+
+.eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(82, 31, 18, 0.16);
+  background: rgba(246, 235, 217, 0.8);
+  padding: 0.65rem 1rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mel-caramel);
+}
+
+.authHero h1,
+.profileHero h1 {
+  margin-top: 1rem;
+  max-width: 45rem;
+  font-family: var(--font-cormorant), serif;
+  font-size: clamp(2.8rem, 7vw, 5.5rem);
+  font-weight: 900;
+  line-height: 0.94;
+  color: var(--mel-brown);
+}
+
+.authHero p,
+.profileHero p {
+  margin-top: 1rem;
+  max-width: 42rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 1rem;
+  line-height: 1.85;
+  color: var(--mel-brown-soft);
+}
+
+.authNote {
+  display: flex;
+  min-height: 13rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1.7rem;
+  background: rgba(246, 235, 217, 0.72);
+  padding: 1.4rem;
+  text-align: center;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.58),
+    0 16px 34px rgba(82, 31, 18, 0.08);
+}
+
+.authNote svg {
+  color: var(--mel-caramel);
+}
+
+.authNote strong {
+  margin-top: 0.8rem;
+  max-width: 15rem;
+  font-family: var(--font-cormorant), serif;
+  font-size: 1.75rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--mel-brown);
+}
+
+.authNote span {
+  margin-top: 0.8rem;
+  border-radius: 999px;
+  background: var(--mel-brown);
+  padding: 0.6rem 0.85rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.76rem;
+  font-weight: 900;
+  color: var(--mel-cream);
+}
+
+.authLayout,
+.accountLayout {
+  margin-top: 2rem;
+  display: grid;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.authSideCard,
+.authCard,
+.profileCard,
+.sidePanel article,
+.summaryCard {
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  background: rgba(246, 235, 217, 0.78);
+  box-shadow: 0 16px 35px rgba(82, 31, 18, 0.1);
+}
+
+.authSideCard,
+.authCard,
+.profileCard,
+.sidePanel article {
+  border-radius: 1.8rem;
+  padding: 1.25rem;
+}
+
+.authSideCard h2,
+.formHeader h2,
+.sectionHeader h2,
+.sidePanel h2 {
+  font-family: var(--font-cormorant), serif;
+  font-size: 2.2rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--mel-brown);
+}
+
+.authSideCard ul {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.authSideCard li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--mel-brown-soft);
+}
+
+.authSideCard li svg {
+  color: var(--mel-green);
+}
+
+.authSideCard p,
+.formHeader p,
+.sidePanel p {
+  margin-top: 1rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: var(--mel-brown-soft);
+}
+
+.authTabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  border-radius: 999px;
+  background: rgba(82, 31, 18, 0.08);
+  padding: 0.4rem;
+}
+
+.authTabs button {
+  border-radius: 999px;
+  padding: 0.75rem 0.9rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: var(--mel-brown-soft);
+}
+
+.authTabs .activeTab {
+  background: var(--mel-brown);
+  color: var(--mel-cream);
+  box-shadow: 0 12px 24px rgba(82, 31, 18, 0.16);
+}
+
+.form,
+.profileForm {
+  margin-top: 1.25rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.fieldGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.field span {
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: var(--mel-brown);
+}
+
+.inputWithIcon {
+  display: flex;
+  min-height: 3.2rem;
+  align-items: center;
+  gap: 0.7rem;
+  border: 1px solid rgba(82, 31, 18, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  padding: 0 1rem;
+  color: var(--mel-brown-soft);
+}
+
+.inputWithIcon input,
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.9rem;
+  color: var(--mel-brown);
+  outline: none;
+}
+
+.field input,
+.field select {
+  min-height: 3.2rem;
+  border: 1px solid rgba(82, 31, 18, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  padding: 0 1rem;
+}
+
+.field textarea {
+  min-height: 9rem;
+  resize: vertical;
+  border: 1px solid rgba(82, 31, 18, 0.14);
+  border-radius: 1.4rem;
+  background: rgba(255, 255, 255, 0.55);
+  padding: 1rem;
+  line-height: 1.7;
+}
+
+.submitButton,
+.saveButton,
+.logoutButton,
+.sectionHeader button {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  background: var(--mel-brown);
+  padding: 0.82rem 1.1rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: var(--mel-cream);
+  box-shadow: 0 14px 26px rgba(82, 31, 18, 0.18);
+}
+
+.profileHero {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.avatarBlock {
+  display: flex;
+  height: 9.5rem;
+  width: 9.5rem;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 2.1rem;
+  background: rgba(82, 31, 18, 0.08);
+  color: var(--mel-brown);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6),
+    0 18px 36px rgba(82, 31, 18, 0.12);
+}
+
+.avatarBlock img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+.profileHeroContent h1 {
+  margin-top: 0.8rem;
+}
+
+.profileTags {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.profileTags span {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+  padding: 0.55rem 0.75rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: var(--mel-brown);
+}
+
+.logoutButton {
+  align-self: start;
+  background: rgba(132, 42, 42, 0.12);
+  color: #7a2626;
+  box-shadow: none;
+}
+
+.summaryGrid {
+  margin-top: 2rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.summaryCard {
+  display: grid;
+  gap: 0.6rem;
+  border-radius: 1.5rem;
+  padding: 1rem;
+}
+
+.summaryCard div {
+  display: flex;
+  height: 3.2rem;
+  width: 3.2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  background: var(--mel-brown);
+  color: var(--mel-cream);
+}
+
+.summaryCard span {
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: var(--mel-brown-soft);
+}
+
+.summaryCard strong {
+  font-family: var(--font-cormorant), serif;
+  font-size: 2.5rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--mel-brown);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.sectionHeader span {
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mel-caramel);
+}
+
+.profileDetails {
+  margin-top: 1.25rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.infoRow {
+  display: grid;
+  gap: 0.35rem;
+  border-radius: 1.1rem;
+  background: rgba(255, 255, 255, 0.42);
+  padding: 0.9rem;
+}
+
+.infoRow span {
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mel-caramel);
+}
+
+.infoRow strong {
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.92rem;
+  font-weight: 900;
+  color: var(--mel-brown);
+}
+
+.avatarUpload {
+  display: inline-flex;
+  width: fit-content;
+  cursor: pointer;
+}
+
+.avatarUpload input {
+  display: none;
+}
+
+.avatarUpload span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  background: rgba(82, 31, 18, 0.08);
+  padding: 0.75rem 0.95rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: var(--mel-brown);
+}
+
+.sidePanel {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .fieldGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 760px) {
+  .authHero {
+    grid-template-columns: minmax(0, 1fr) 18rem;
+  }
+}
+
+@media (min-width: 980px) {
+  .authLayout {
+    grid-template-columns: 22rem minmax(0, 1fr);
+  }
+
+  .accountLayout {
+    grid-template-columns: minmax(0, 1fr) 20rem;
+  }
+
+  .summaryGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .sidePanel {
+    position: sticky;
+    top: 7rem;
+  }
+}
+
+@media (max-width: 620px) {
+  .profileHero {
+    grid-template-columns: 1fr;
+  }
+
+  .avatarBlock {
+    height: 8rem;
+    width: 8rem;
+  }
+
+  .sectionHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sectionHeader button,
+  .saveButton,
+  .submitButton,
+  .logoutButton {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .page {
+    padding: 1.2rem 0.9rem 3rem;
+  }
+
+  .authHero,
+  .profileHero {
+    border-radius: 1.6rem;
+    padding: 1.2rem;
+  }
+
+  .authHero h1,
+  .profileHero h1 {
+    font-size: 2.65rem;
+  }
+
+  .authHero p,
+  .profileHero p {
+    font-size: 0.88rem;
+  }
+
+  .authTabs {
+    border-radius: 1.2rem;
+    grid-template-columns: 1fr;
+  }
+
+  .authSideCard,
+  .authCard,
+  .profileCard,
+  .sidePanel article {
+    border-radius: 1.5rem;
+    padding: 1rem;
+  }
+}

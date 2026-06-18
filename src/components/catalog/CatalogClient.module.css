@@ -1,0 +1,623 @@
+.page {
+  margin: 0 auto;
+  max-width: 78rem;
+  overflow-x: clip;
+  padding: 2rem 1rem 4rem;
+}
+
+.hero {
+  display: grid;
+  gap: 1rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 2.25rem;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(255, 255, 255, 0.68),
+      transparent 24rem
+    ),
+    linear-gradient(
+      135deg,
+      rgba(246, 235, 217, 0.92),
+      rgba(248, 225, 193, 0.66)
+    );
+  padding: 2rem;
+  box-shadow: 0 24px 55px rgba(82, 31, 18, 0.13);
+}
+
+.eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid rgba(82, 31, 18, 0.16);
+  background: rgba(246, 235, 217, 0.8);
+  padding: 0.65rem 1rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mel-caramel);
+}
+
+.hero h1 {
+  max-width: 42rem;
+  font-family: var(--font-cormorant), serif;
+  font-size: clamp(2.8rem, 7vw, 5.5rem);
+  font-weight: 900;
+  line-height: 0.94;
+  color: var(--mel-brown);
+}
+
+.hero p {
+  max-width: 42rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 1rem;
+  line-height: 1.85;
+  color: var(--mel-brown-soft);
+}
+
+.searchBox {
+  margin-top: 0.9rem;
+  display: flex;
+  min-height: 3.4rem;
+  max-width: 42rem;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(82, 31, 18, 0.14);
+  background: rgba(255, 255, 255, 0.58);
+  padding: 0 1rem;
+  color: var(--mel-brown-soft);
+}
+
+.searchBox input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.9rem;
+  color: var(--mel-brown);
+  outline: none;
+}
+
+.searchBox input::placeholder {
+  color: rgba(82, 31, 18, 0.46);
+}
+
+.categorySection {
+  margin-top: 2.5rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.categorySection h2 {
+  font-family: var(--font-cormorant), serif;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--mel-brown);
+}
+
+.categorySection,
+.carouselShell,
+.carousel {
+  min-width: 0;
+}
+
+.carouselShell {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  padding-inline: 3.2rem;
+}
+
+.carouselShell::before,
+.carouselShell::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  z-index: 3;
+  height: 100%;
+  width: 3.2rem;
+  pointer-events: none;
+}
+
+.carouselShell::before {
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    var(--mel-cream) 0%,
+    rgba(246, 235, 217, 0) 100%
+  );
+}
+
+.carouselShell::after {
+  right: 0;
+  background: linear-gradient(
+    270deg,
+    var(--mel-cream) 0%,
+    rgba(246, 235, 217, 0) 100%
+  );
+}
+
+.carousel {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(15rem, 17rem);
+  gap: 1rem;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0 1rem;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.carouselCompact {
+  grid-auto-columns: minmax(18rem, 22rem);
+}
+
+.carouselButton {
+  position: absolute;
+  top: 50%;
+  z-index: 8;
+  display: inline-flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--mel-brown);
+  color: var(--mel-cream);
+  box-shadow: 0 14px 28px rgba(82, 31, 18, 0.22);
+  transform: translateY(-50%);
+  transition:
+    transform 200ms ease,
+    background-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.carouselButton:hover {
+  background: var(--mel-caramel);
+  box-shadow: 0 18px 34px rgba(82, 31, 18, 0.26);
+  transform: translateY(-50%) scale(1.05);
+}
+
+.carouselButtonLeft {
+  left: 0.35rem;
+}
+
+.carouselButtonRight {
+  right: 0.35rem;
+}
+
+.bookCard {
+  scroll-snap-align: start;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 1.65rem;
+  background: rgba(246, 235, 217, 0.78);
+  box-shadow: 0 16px 35px rgba(82, 31, 18, 0.1);
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    background-color 220ms ease;
+}
+
+.bookCard:hover {
+  transform: translateY(-6px);
+  background: rgba(246, 235, 217, 0.96);
+  box-shadow: 0 24px 45px rgba(82, 31, 18, 0.16);
+}
+
+.coverWrapper {
+  display: flex;
+  min-height: 18rem;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.52), transparent 10rem),
+    rgba(82, 31, 18, 0.08);
+  padding: 1rem;
+}
+
+.cover {
+  height: 16.5rem;
+  width: auto;
+  max-width: 100%;
+  border-radius: 0.85rem;
+  object-fit: cover;
+  box-shadow: 0 18px 32px rgba(82, 31, 18, 0.22);
+}
+
+.cardBody {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+}
+
+.cardBody h3 {
+  display: -webkit-box;
+  overflow: hidden;
+  min-height: 3.1rem;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-family: var(--font-cormorant), serif;
+  font-size: 1.55rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--mel-brown);
+}
+
+.cardBody p {
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--mel-brown-soft);
+}
+
+.cardBody p strong {
+  color: var(--mel-brown);
+}
+
+.cardBody > strong {
+  font-family: var(--font-inter), sans-serif;
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--mel-caramel);
+}
+
+.cardBody button,
+.cartButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  background: var(--mel-brown);
+  padding: 0.72rem 1rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: var(--mel-cream);
+  box-shadow: 0 14px 26px rgba(82, 31, 18, 0.16);
+  transition:
+    transform 200ms ease,
+    background-color 200ms ease;
+}
+
+.cardBody button:hover,
+.cartButton:hover {
+  transform: translateY(-2px);
+  background: var(--mel-caramel);
+}
+
+/* =========================
+   Modal
+========================= */
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(82, 31, 18, 0.38);
+  padding: 1rem;
+  backdrop-filter: blur(8px);
+}
+
+.modal {
+  width: min(100%, 58rem);
+  max-height: 88vh;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 2rem;
+  background: rgba(246, 235, 217, 0.97);
+  padding: 1.35rem;
+  box-shadow: 0 30px 70px rgba(82, 31, 18, 0.28);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.modalHeader h2 {
+  max-width: 43rem;
+  font-family: var(--font-cormorant), serif;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--mel-brown);
+}
+
+.modalHeader button {
+  display: inline-flex;
+  height: 2.6rem;
+  width: 2.6rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--mel-brown);
+  color: var(--mel-cream);
+}
+
+.modalGrid {
+  margin-top: 1.4rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.modalCover {
+  display: flex;
+  justify-content: center;
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.58), transparent 13rem),
+    rgba(82, 31, 18, 0.08);
+  padding: 1rem;
+}
+
+.modalCover img {
+  height: auto;
+  max-height: 28rem;
+  width: auto;
+  max-width: 100%;
+  border-radius: 1rem;
+  object-fit: cover;
+  box-shadow: 0 20px 40px rgba(82, 31, 18, 0.22);
+}
+
+.modalInfo {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.infoCard,
+.priceCard {
+  border-radius: 1.1rem;
+  background: rgba(255, 255, 255, 0.45);
+  padding: 0.9rem;
+  box-shadow: 0 10px 22px rgba(82, 31, 18, 0.06);
+}
+
+.infoCard span,
+.priceCard span {
+  display: block;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mel-caramel);
+}
+
+.infoCard strong,
+.priceCard strong {
+  margin-top: 0.35rem;
+  display: block;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.92rem;
+  font-weight: 900;
+  line-height: 1.45;
+  color: var(--mel-brown);
+}
+
+.priceCard {
+  background: var(--mel-brown);
+}
+
+.priceCard span,
+.priceCard strong {
+  color: var(--mel-cream);
+}
+
+.priceCard strong {
+  font-size: 1.35rem;
+}
+
+.synopsis {
+  margin-top: 1.5rem;
+  border-radius: 1.35rem;
+  background: rgba(255, 255, 255, 0.42);
+  padding: 1rem;
+}
+
+.synopsis h3,
+.sagaBooks h3 {
+  font-family: var(--font-cormorant), serif;
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--mel-brown);
+}
+
+.synopsis p {
+  margin-top: 0.5rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.92rem;
+  line-height: 1.8;
+  color: var(--mel-brown-soft);
+}
+
+.cartButton {
+  margin-top: 1.25rem;
+}
+
+/* =========================
+   Modal saga
+========================= */
+
+.sagaBooks {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.miniBookCard {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: center;
+  border-radius: 1.1rem;
+  background: rgba(255, 255, 255, 0.45);
+  padding: 0.85rem;
+  box-shadow: 0 10px 22px rgba(82, 31, 18, 0.06);
+}
+
+.miniBookCard img {
+  height: 7.5rem;
+  width: 5.2rem;
+  border-radius: 0.65rem;
+  object-fit: cover;
+  box-shadow: 0 12px 22px rgba(82, 31, 18, 0.16);
+}
+
+.miniBookCard h4 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-family: var(--font-cormorant), serif;
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--mel-brown);
+}
+
+.miniBookCard p {
+  margin-top: 0.35rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.76rem;
+  color: var(--mel-brown-soft);
+}
+
+.miniBookCard button {
+  margin-top: 0.55rem;
+  display: inline-flex;
+  border-radius: 999px;
+  background: rgba(82, 31, 18, 0.08);
+  padding: 0.55rem 0.75rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: var(--mel-brown);
+}
+
+/* =========================
+   Responsive
+========================= */
+
+@media (min-width: 720px) {
+  .modalGrid {
+    grid-template-columns: 18rem minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+@media (min-width: 980px) {
+  .hero {
+    padding: 2.5rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .page {
+    padding: 1.2rem 0.9rem 3rem;
+  }
+
+  .hero {
+    border-radius: 1.6rem;
+    padding: 1.2rem;
+  }
+
+  .hero h1 {
+    font-size: 2.65rem;
+  }
+
+  .hero p {
+    font-size: 0.88rem;
+  }
+
+  .searchBox {
+    border-radius: 1.2rem;
+    padding: 0.8rem 1rem;
+  }
+
+  .carouselShell {
+    padding-inline: 2.55rem;
+  }
+
+  .carouselShell::before,
+  .carouselShell::after {
+    width: 2.55rem;
+  }
+
+  .carousel {
+    grid-auto-columns: minmax(13.5rem, 15rem);
+  }
+
+  .carouselCompact {
+    grid-auto-columns: minmax(16rem, 18rem);
+  }
+
+  .carouselButton {
+    height: 2.25rem;
+    width: 2.25rem;
+  }
+
+  .carouselButtonLeft {
+    left: 0.15rem;
+  }
+
+  .carouselButtonRight {
+    right: 0.15rem;
+  }
+
+  .coverWrapper {
+    min-height: 16.5rem;
+  }
+
+  .cover {
+    height: 15rem;
+  }
+
+  .modal {
+    border-radius: 1.35rem;
+    padding: 1rem;
+  }
+
+  .modalHeader h2 {
+    font-size: 2.15rem;
+  }
+
+  .modalCover img {
+    max-height: 23rem;
+  }
+
+  .miniBookCard {
+    grid-template-columns: 4.8rem minmax(0, 1fr);
+  }
+
+  .miniBookCard img {
+    height: 6.8rem;
+    width: 4.6rem;
+  }
+
+  .cartButton {
+    width: 100%;
+  }
+}

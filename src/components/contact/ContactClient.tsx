@@ -30,7 +30,7 @@ const initialFormState: ContactFormState = {
   reason: "Duda sobre catálogo",
 };
 
-const formspreeEndpoint = process.env.NEXT_PUBLIC_FORMSPREE_ENDPOINT;
+const formspreeEndpoint = "https://formspree.io/f/xqeovqvr";
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);

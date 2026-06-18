@@ -287,6 +287,9 @@ async function confirmAction(title: string, text: string) {
     cancelButtonColor: "#a0653d",
     background: "#f6ebd9",
     color: "#521f12",
+    customClass: {
+      container: "mel-swal-container",
+    },
   });
 
   return result.isConfirmed;
@@ -308,6 +311,7 @@ export function ForumsClient() {
     return {
       id: accountUser.id,
       username: currentProfile?.displayName ?? accountUser.name,
+      avatar: currentProfile?.avatar ?? null,
     };
   }, [accountUser, currentProfile]);
 
@@ -464,6 +468,7 @@ export function ForumsClient() {
       contentHtml,
       authorId: currentUser.id,
       authorName: currentUser.username,
+      authorAvatar: currentUser.avatar ?? null,
       createdAt: new Date().toISOString(),
     };
 
@@ -986,11 +991,39 @@ type PostCardProps = {
   onOpen: () => void;
 };
 
+type ForumAvatarProps = {
+  name: string;
+  avatar?: string | null;
+  size?: "sm" | "md";
+};
+
+function ForumAvatar({ name, avatar, size = "md" }: ForumAvatarProps) {
+  return (
+    <div
+      className={
+        size === "sm"
+          ? `${styles.avatar} ${styles.avatarSmall}`
+          : styles.avatar
+      }
+    >
+      {avatar ? (
+        <img
+          src={avatar}
+          alt={`Foto de perfil de ${name}`}
+          className={styles.avatarPhoto}
+        />
+      ) : (
+        name.charAt(0).toUpperCase()
+      )}
+    </div>
+  );
+}
+
 function PostCard({ post, onOpen }: PostCardProps) {
   return (
     <article className={styles.postCard}>
       <div className={styles.postMain}>
-        <div className={styles.avatar}>{post.authorName.charAt(0)}</div>
+        <ForumAvatar name={post.authorName} avatar={post.authorAvatar} />
 
         <div>
           <h3>{post.title}</h3>
@@ -1062,6 +1095,7 @@ function PostDetailModal({
       contentHtml: replyHtml,
       authorId: currentUser.id,
       authorName: currentUser.username,
+      authorAvatar: currentUser.avatar ?? null,
       createdAt: new Date().toISOString(),
     };
 
@@ -1140,12 +1174,20 @@ function PostDetailModal({
     <div className={styles.modalBackdrop} onClick={onClose}>
       <article className={styles.modal} onClick={(event) => event.stopPropagation()}>
         <header className={styles.modalHeader}>
-          <div>
-            <span>
-              {post.authorName} · {formatDate(post.createdAt)}
-            </span>
+          <div className={styles.modalAuthorRow}>
+            <ForumAvatar
+              name={post.authorName}
+              avatar={post.authorAvatar}
+              size="sm"
+            />
 
-            <h2>{post.title}</h2>
+            <div>
+              <span>
+                {post.authorName} · {formatDate(post.createdAt)}
+              </span>
+
+              <h2>{post.title}</h2>
+            </div>
           </div>
 
           <button type="button" onClick={onClose} aria-label="Cerrar">
@@ -1181,9 +1223,17 @@ function PostDetailModal({
               replies.map((reply) => (
                 <article key={reply.id} className={styles.replyCard}>
                   <div className={styles.replyHeader}>
-                    <div>
-                      <strong>{reply.authorName}</strong>
-                      <span>{formatDate(reply.createdAt)}</span>
+                    <div className={styles.replyAuthorRow}>
+                      <ForumAvatar
+                        name={reply.authorName}
+                        avatar={reply.authorAvatar}
+                        size="sm"
+                      />
+
+                      <div>
+                        <strong>{reply.authorName}</strong>
+                        <span>{formatDate(reply.createdAt)}</span>
+                      </div>
                     </div>
 
                     {currentUser?.id === reply.authorId && (

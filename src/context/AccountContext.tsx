@@ -81,6 +81,17 @@ function createDefaultProfile(user: RegisteredUser): UserProfile {
     readerStatus: "Buscando nueva lectura",
     bio: "Lector/a de Mundo Entre Libros.",
     favoriteGenre: "Novela Juvenil",
+    address: {
+      street: "",
+      exteriorNumber: "",
+      interiorNumber: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "México",
+      references: "",
+    },
   };
 }
 
@@ -157,7 +168,19 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const currentProfile = useMemo(() => {
     if (!currentUser) return null;
 
-    return profiles[currentUser.id] ?? createDefaultProfile(currentUser);
+    const defaultProfile = createDefaultProfile(currentUser);
+    const storedProfile = profiles[currentUser.id];
+
+    if (!storedProfile) return defaultProfile;
+
+    return {
+      ...defaultProfile,
+      ...storedProfile,
+      address: {
+        ...defaultProfile.address,
+        ...storedProfile.address,
+      },
+    };
   }, [currentUser, profiles]);
 
   const totalForumPoints = useMemo(() => {

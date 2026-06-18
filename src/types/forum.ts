@@ -1,6 +1,7 @@
 export type ForumUser = {
   id: string;
   username: string;
+  avatar?: string | null;
 };
 
 export type ForumCategory = {
@@ -17,6 +18,7 @@ export type ForumPost = {
   contentHtml: string;
   authorId: string;
   authorName: string;
+  authorAvatar?: string | null;
   createdAt: string;
 };
 
@@ -27,6 +29,7 @@ export type ForumReply = {
   contentHtml: string;
   authorId: string;
   authorName: string;
+  authorAvatar?: string | null;
   createdAt: string;
 };
 

@@ -554,12 +554,37 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   border-radius: 999px;
   background: var(--mel-brown);
   font-family: var(--font-inter), sans-serif;
   font-size: 0.9rem;
   font-weight: 900;
   color: var(--mel-cream);
+  box-shadow: 0 10px 20px rgba(82, 31, 18, 0.14);
+}
+
+.avatarSmall {
+  height: 2.35rem;
+  width: 2.35rem;
+  font-size: 0.78rem;
+}
+
+.avatarPhoto {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+.modalAuthorRow,
+.replyAuthorRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.replyAuthorRow {
+  min-width: 0;
 }
 
 .postCard h3 {
@@ -1004,4 +1029,8 @@
   .modalHeader {
     align-items: flex-start;
   }
+}
+
+:global(.mel-swal-container) {
+  z-index: 30000 !important;
 }

@@ -19,6 +19,18 @@ export type ReaderStatus =
   | "Modo terror activado"
   | "Releyendo favoritos";
 
+export type UserAddress = {
+  street: string;
+  exteriorNumber: string;
+  interiorNumber: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  references: string;
+};
+
 export type UserProfile = {
   userId: string;
   displayName: string;
@@ -27,6 +39,7 @@ export type UserProfile = {
   readerStatus: ReaderStatus;
   bio: string;
   favoriteGenre: string;
+  address: UserAddress;
 };
 
 export type AccountRegisterInput = {

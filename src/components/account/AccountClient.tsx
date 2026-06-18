@@ -29,6 +29,7 @@ import type {
   AccountLoginInput,
   AccountRegisterInput,
   ReaderStatus,
+  UserAddress,
   UserProfile,
 } from "@/types/account";
 import styles from "./AccountClient.module.css";
@@ -485,6 +486,20 @@ function handleAddWishlistItemToCart(item: WishlistItem) {
     reader.readAsDataURL(file);
   }
 
+  function updateAddressField(field: keyof UserAddress, value: string) {
+    setProfileForm((currentForm) => {
+      if (!currentForm) return currentForm;
+
+      return {
+        ...currentForm,
+        address: {
+          ...currentForm.address,
+          [field]: value,
+        },
+      };
+    });
+  }
+
   return (
     <main className={styles.page}>
       <section className={styles.profileHero}>
@@ -672,6 +687,112 @@ function handleAddWishlistItemToCart(item: WishlistItem) {
                 </label>
               </div>
 
+              <section className={styles.addressSection}>
+                <div className={styles.addressHeader}>
+                  <span>Dirección</span>
+                  <h3>Datos de envío</h3>
+                  <p>
+                    Esta dirección podrá usarse después para completar pedidos o entregas.
+                  </p>
+                </div>
+
+                <label className={styles.field}>
+                  <span>Calle</span>
+                  <input
+                    value={profileForm.address.street}
+                    onChange={(event) => updateAddressField("street", event.target.value)}
+                    placeholder="Ej. Avenida Siempre Viva"
+                  />
+                </label>
+
+                <div className={styles.fieldGrid}>
+                  <label className={styles.field}>
+                    <span>Número exterior</span>
+                    <input
+                      value={profileForm.address.exteriorNumber}
+                      onChange={(event) =>
+                        updateAddressField("exteriorNumber", event.target.value)
+                      }
+                      placeholder="Ej. 742"
+                    />
+                  </label>
+
+                  <label className={styles.field}>
+                    <span>Número interior</span>
+                    <input
+                      value={profileForm.address.interiorNumber}
+                      onChange={(event) =>
+                        updateAddressField("interiorNumber", event.target.value)
+                      }
+                      placeholder="Opcional"
+                    />
+                  </label>
+                </div>
+
+                <label className={styles.field}>
+                  <span>Colonia</span>
+                  <input
+                    value={profileForm.address.neighborhood}
+                    onChange={(event) =>
+                      updateAddressField("neighborhood", event.target.value)
+                    }
+                    placeholder="Ej. Centro"
+                  />
+                </label>
+
+                <div className={styles.fieldGrid}>
+                  <label className={styles.field}>
+                    <span>Ciudad / Municipio</span>
+                    <input
+                      value={profileForm.address.city}
+                      onChange={(event) => updateAddressField("city", event.target.value)}
+                      placeholder="Ej. Pachuca de Soto"
+                    />
+                  </label>
+
+                  <label className={styles.field}>
+                    <span>Estado</span>
+                    <input
+                      value={profileForm.address.state}
+                      onChange={(event) => updateAddressField("state", event.target.value)}
+                      placeholder="Ej. Hidalgo"
+                    />
+                  </label>
+                </div>
+
+                <div className={styles.fieldGrid}>
+                  <label className={styles.field}>
+                    <span>Código postal</span>
+                    <input
+                      value={profileForm.address.zipCode}
+                      onChange={(event) => updateAddressField("zipCode", event.target.value)}
+                      placeholder="Ej. 42000"
+                    />
+                  </label>
+
+                  <label className={styles.field}>
+                    <span>País</span>
+                    <input
+                      value={profileForm.address.country}
+                      onChange={(event) => updateAddressField("country", event.target.value)}
+                      placeholder="México"
+                    />
+                  </label>
+                </div>
+
+                <label className={styles.field}>
+                  <span>Referencias</span>
+                  <textarea
+                    value={profileForm.address.references}
+                    onChange={(event) =>
+                      updateAddressField("references", event.target.value)
+                    }
+                    placeholder="Ej. Entre calles, color de fachada, indicaciones de entrega..."
+                    rows={4}
+                  />
+                </label>
+              </section>
+
               <label className={styles.field}>
                 <span>Bio corta</span>
                 <textarea
@@ -706,6 +827,43 @@ function handleAddWishlistItemToCart(item: WishlistItem) {
               <InfoRow label="Estado lector" value={currentProfile.readerStatus} />
               <InfoRow label="Género favorito" value={currentProfile.favoriteGenre} />
               <InfoRow label="Correo" value={currentUser.email} />
+
+              <div className={styles.addressPreview}>
+                <span>Dirección de envío</span>
+
+                {currentProfile.address.street ||
+                currentProfile.address.city ||
+                currentProfile.address.zipCode ? (
+                  <>
+                    <strong>
+                      {currentProfile.address.street}{" "}
+                      {currentProfile.address.exteriorNumber}
+                      {currentProfile.address.interiorNumber
+                        ? ` Int. ${currentProfile.address.interiorNumber}`
+                        : ""}
+                    </strong>
+
+                    <p>
+                      {currentProfile.address.neighborhood}
+                      {currentProfile.address.neighborhood ? ", " : ""}
+                      {currentProfile.address.city}
+                      {currentProfile.address.city ? ", " : ""}
+                      {currentProfile.address.state}
+                    </p>
+
+                    <p>
+                      C.P. {currentProfile.address.zipCode || "Sin código postal"} ·{" "}
+                      {currentProfile.address.country || "Sin país"}
+                    </p>
+
+                    {currentProfile.address.references && (
+                      <small>{currentProfile.address.references}</small>
+                    )}
+                  </>
+                ) : (
+                  <p>Sin dirección registrada.</p>
+                )}
+              </div>
             </div>
           )}
         </section>

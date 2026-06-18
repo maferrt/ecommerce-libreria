@@ -12,6 +12,7 @@ import { type ReactNode, useMemo, useRef, useState } from "react";
 import { catalogData, categoryLabels, categoryOrder } from "@/data/catalog";
 import type { Book, Saga } from "@/types/book";
 import { useCart } from "@/context/CartContext";
+import { ClientPortal } from "@/components/ui/ClientPortal";
 import styles from "./CatalogClient.module.css";
 
 const currencyFormatter = new Intl.NumberFormat("es-MX", {
@@ -132,24 +133,28 @@ export function CatalogClient() {
       })}
 
       {selectedBook && (
-        <BookModal
-          book={selectedBook}
-          onClose={() => setSelectedBook(null)}
-          onAddToCart={() => addBook(selectedBook)}
-        />
+        <ClientPortal>
+          <BookModal
+            book={selectedBook}
+            onClose={() => setSelectedBook(null)}
+            onAddToCart={() => addBook(selectedBook)}
+          />
+        </ClientPortal>
       )}
 
       {selectedSaga && (
-        <SagaModal
-          saga={selectedSaga}
-          books={getSagaBooks(selectedSaga)}
-          onClose={() => setSelectedSaga(null)}
-          onOpenBook={(book) => {
-            setSelectedSaga(null);
-            setSelectedBook(book);
-          }}
-          onAddToCart={() => addSaga(selectedSaga, selectedSaga.libros.length)}
-        />
+        <ClientPortal>
+          <SagaModal
+            saga={selectedSaga}
+            books={getSagaBooks(selectedSaga)}
+            onClose={() => setSelectedSaga(null)}
+            onOpenBook={(book) => {
+              setSelectedSaga(null);
+              setSelectedBook(book);
+            }}
+            onAddToCart={() => addSaga(selectedSaga, selectedSaga.libros.length)}
+          />
+        </ClientPortal>
       )}
     </main>
   );

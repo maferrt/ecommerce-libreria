@@ -1,5 +1,9 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAccount } from "@/context/AccountContext";
+import { ClientPortal } from "@/components/ui/ClientPortal";
 import {
   BookOpen,
   ImagePlus,
@@ -289,9 +293,24 @@ async function confirmAction(title: string, text: string) {
 }
 
 export function ForumsClient() {
-  const [currentUser, setCurrentUser] = useState<ForumUser | null>(() =>
-    getStoredUser(),
-  );
+  const router = useRouter();
+  const {
+    currentUser: accountUser,
+    currentProfile,
+    isAuthenticated,
+    logoutUser,
+    refreshAccountData,
+  } = useAccount();
+
+  const currentUser = useMemo<ForumUser | null>(() => {
+    if (!accountUser) return null;
+
+    return {
+      id: accountUser.id,
+      username: currentProfile?.displayName ?? accountUser.name,
+    };
+  }, [accountUser, currentProfile]);
+
   const [selectedForum, setSelectedForum] = useState<ForumCategory | null>(null);
   const [selectedPost, setSelectedPost] = useState<ForumPost | null>(null);
   const [showAllPosts, setShowAllPosts] = useState(false);
@@ -331,26 +350,34 @@ export function ForumsClient() {
   }
 
   async function handleForumClick(forum: ForumCategory) {
-    let user = currentUser;
+    if (!isAuthenticated || !currentUser) {
+      const result = await Swal.fire({
+        icon: "info",
+        title: "Inicia sesión",
+        text: "Para entrar a un foro necesitas iniciar sesión o crear una cuenta.",
+        showCancelButton: true,
+        confirmButtonText: "Ir a mi cuenta",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#521f12",
+        cancelButtonColor: "#a0653d",
+        background: "#f6ebd9",
+        color: "#521f12",
+      });
 
-    if (!user) {
-      user = await showLoginAlert();
+      if (result.isConfirmed) {
+        router.push("/cuenta");
+      }
 
-      if (!user) return;
-
-      saveStoredUser(user);
-      setCurrentUser(user);
-      showToast(`Bienvenida, ${user.username}.`, "success");
+      return;
     }
 
-    setSelectedForum(forum);
-    setSelectedPost(null);
-    setShowAllPosts(false);
-  }
+  setSelectedForum(forum);
+  setSelectedPost(null);
+  setShowAllPosts(false);
+}
 
   function handleLogout() {
-    saveStoredUser(null);
-    setCurrentUser(null);
+    logoutUser();
     setSelectedForum(null);
     setSelectedPost(null);
     setShowAllPosts(false);
@@ -368,6 +395,7 @@ export function ForumsClient() {
 
     subscribeUserToForum(currentUser.id, selectedForum.id);
     refresh();
+    refreshAccountData();
     showToast("Te suscribiste a este foro. Ya puedes participar.", "success");
   }
 
@@ -375,16 +403,16 @@ export function ForumsClient() {
     if (!currentUser || !selectedForum) return;
 
     const confirmed = await Swal.fire({
-        title: "¿Desuscribirte del foro?",
-        text: "Ya no podrás publicar ni responder en este foro. Tus puntos de este foro también se reiniciarán.",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Sí, desuscribirme",
-        cancelButtonText: "Cancelar",
-        confirmButtonColor: "#7a2626",
-        cancelButtonColor: "#a0653d",
-        background: "#f6ebd9",
-        color: "#521f12",
+      title: "¿Desuscribirte del foro?",
+      text: "Ya no podrás publicar ni responder en este foro. Tus puntos de este foro también se reiniciarán.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, desuscribirme",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#7a2626",
+      cancelButtonColor: "#a0653d",
+      background: "#f6ebd9",
+      color: "#521f12",
     });
 
     if (!confirmed.isConfirmed) return;
@@ -392,6 +420,7 @@ export function ForumsClient() {
     unsubscribeUserFromForum(currentUser.id, selectedForum.id);
 
     refresh();
+    refreshAccountData();
 
     showToast("Te desuscribiste de este foro.", "info");
   }
@@ -439,6 +468,8 @@ export function ForumsClient() {
     updateUserForumPoints(currentUser.id, selectedForum.id, POINTS_BY_POST);
 
     refresh();
+    refreshAccountData();
+
     showToast(`Publicación creada. +${POINTS_BY_POST} puntos.`, "success");
   }
 
@@ -680,23 +711,30 @@ export function ForumsClient() {
           <section className={styles.userCard}>
             <strong>{currentUser?.username}</strong>
 
-            <button type="button" onClick={handleLogout}>
-              <LogOut size={16} />
-              Cerrar sesión
-            </button>
+            <div className={styles.userActions}>
+              <Link href="/cuenta">Mi cuenta</Link>
+
+              <button type="button" onClick={handleLogout}>
+                <LogOut size={16} />
+                Salir
+              </button>
+            </div>
           </section>
         </aside>
       </section>
 
       {selectedPost && (
-        <PostDetailModal
-          post={selectedPost}
-          currentUser={currentUser}
-          canParticipate={Boolean(isSubscribed)}
-          onClose={() => setSelectedPost(null)}
-          onRefresh={refresh}
-          onPostDeleted={handlePostDeleted}
-        />
+        <ClientPortal>
+          <PostDetailModal
+            post={selectedPost}
+            currentUser={currentUser}
+            canParticipate={Boolean(isSubscribed)}
+            onClose={() => setSelectedPost(null)}
+            onRefresh={refresh}
+            onPostDeleted={handlePostDeleted}
+            onPointsChanged={refreshAccountData}
+          />
+        </ClientPortal>
       )}
     </main>
   );
@@ -971,6 +1009,7 @@ type PostDetailModalProps = {
   onClose: () => void;
   onRefresh: () => void;
   onPostDeleted: () => void;
+  onPointsChanged: () => void;
 };
 
 function PostDetailModal({
@@ -980,6 +1019,7 @@ function PostDetailModal({
   onClose,
   onRefresh,
   onPostDeleted,
+  onPointsChanged,
 }: PostDetailModalProps) {
   const [replyHtml, setReplyHtml] = useState("");
   const [repliesRefreshKey, setRepliesRefreshKey] = useState(0);
@@ -1025,6 +1065,8 @@ function PostDetailModal({
 
     setReplyHtml("");
     refreshReplies();
+    onPointsChanged();
+
     showToast(`Respuesta publicada. +${POINTS_BY_REPLY} puntos.`, "success");
   }
 
@@ -1056,6 +1098,8 @@ function PostDetailModal({
 
     removeStoredReplies(post.forumId, post.id);
 
+    onPointsChanged();
+
     showToast("Publicación eliminada y puntos descontados.", "success");
     onPostDeleted();
   }
@@ -1082,6 +1126,8 @@ function PostDetailModal({
     updateUserForumPoints(reply.authorId, reply.forumId, -POINTS_BY_REPLY);
 
     refreshReplies();
+    onPointsChanged();
+
     showToast("Respuesta eliminada y puntos descontados.", "success");
   }
 

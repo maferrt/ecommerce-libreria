@@ -709,6 +709,27 @@
   color: var(--mel-brown);
 }
 
+.userActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.userActions a,
+.userActions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  background: rgba(82, 31, 18, 0.08);
+  padding: 0.55rem 0.75rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: var(--mel-brown);
+}
+
 /* =========================
    Modal
 ========================= */

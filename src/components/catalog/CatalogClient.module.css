@@ -111,42 +111,13 @@
   width: 100%;
   max-width: 100%;
   overflow: hidden;
-  padding-inline: 3.2rem;
-}
-
-.carouselShell::before,
-.carouselShell::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  z-index: 3;
-  height: 100%;
-  width: 3.2rem;
-  pointer-events: none;
-}
-
-.carouselShell::before {
-  left: 0;
-  background: linear-gradient(
-    90deg,
-    var(--mel-cream) 0%,
-    rgba(246, 235, 217, 0) 100%
-  );
-}
-
-.carouselShell::after {
-  right: 0;
-  background: linear-gradient(
-    270deg,
-    var(--mel-cream) 0%,
-    rgba(246, 235, 217, 0) 100%
-  );
+  padding-inline: 3.25rem;
 }
 
 .carousel {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(15rem, 17rem);
+  grid-auto-columns: calc((100% - 3rem) / 4);
   gap: 1rem;
   width: 100%;
   max-width: 100%;
@@ -163,7 +134,13 @@
 }
 
 .carouselCompact {
-  grid-auto-columns: minmax(18rem, 22rem);
+  grid-auto-columns: calc((100% - 2rem) / 3);
+}
+
+.bookCard,
+.miniBookCard {
+  width: 100%;
+  scroll-snap-align: start;
 }
 
 .carouselButton {
@@ -198,6 +175,53 @@
 
 .carouselButtonRight {
   right: 0.35rem;
+}
+
+@media (max-width: 980px) {
+  .carousel {
+    grid-auto-columns: calc((100% - 2rem) / 3);
+  }
+
+  .carouselCompact {
+    grid-auto-columns: calc((100% - 1rem) / 2);
+  }
+}
+
+@media (max-width: 760px) {
+  .carousel {
+    grid-auto-columns: calc((100% - 1rem) / 2);
+  }
+
+  .carouselCompact {
+    grid-auto-columns: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .carouselShell {
+    padding-inline: 2.55rem;
+  }
+
+  .carousel {
+    grid-auto-columns: 100%;
+  }
+
+  .carouselCompact {
+    grid-auto-columns: 100%;
+  }
+
+  .carouselButton {
+    height: 2.25rem;
+    width: 2.25rem;
+  }
+
+  .carouselButtonLeft {
+    left: 0.15rem;
+  }
+
+  .carouselButtonRight {
+    right: 0.15rem;
+  }
 }
 
 .bookCard {
@@ -308,7 +332,7 @@
 .modalBackdrop {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: 20000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -555,36 +579,6 @@
   .searchBox {
     border-radius: 1.2rem;
     padding: 0.8rem 1rem;
-  }
-
-  .carouselShell {
-    padding-inline: 2.55rem;
-  }
-
-  .carouselShell::before,
-  .carouselShell::after {
-    width: 2.55rem;
-  }
-
-  .carousel {
-    grid-auto-columns: minmax(13.5rem, 15rem);
-  }
-
-  .carouselCompact {
-    grid-auto-columns: minmax(16rem, 18rem);
-  }
-
-  .carouselButton {
-    height: 2.25rem;
-    width: 2.25rem;
-  }
-
-  .carouselButtonLeft {
-    left: 0.15rem;
-  }
-
-  .carouselButtonRight {
-    right: 0.15rem;
   }
 
   .coverWrapper {

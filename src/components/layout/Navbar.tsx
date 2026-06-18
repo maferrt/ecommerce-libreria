@@ -24,7 +24,7 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 px-4 pt-4">
+    <header className="fixed left-0 right-0 top-0 z-[9999] px-4 pt-4">
       <nav className="mx-auto flex max-w-7xl items-center justify-between rounded-[2rem] border border-white/50 bg-[rgba(248,225,193,0.82)] px-5 py-3 shadow-[0_18px_45px_rgba(82,31,18,0.13)] backdrop-blur-xl transition-all duration-300 hover:shadow-[0_22px_55px_rgba(82,31,18,0.18)]">
         <Link
           href="/"

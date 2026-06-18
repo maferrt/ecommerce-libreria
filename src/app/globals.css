@@ -40,7 +40,7 @@ body {
     var(--mel-cream);
   color: var(--mel-brown);
   font-family: var(--font-cormorant), serif;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 ::selection {
@@ -53,7 +53,7 @@ body {
   display: flex;
   min-height: 100vh;
   flex-direction: column;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .main-content {

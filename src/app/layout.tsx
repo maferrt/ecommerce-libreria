@@ -44,6 +44,8 @@ export default function RootLayout({
 
           <Navbar />
 
+          <div className="h-24 shrink-0" aria-hidden="true" />
+
           <main className="main-content page-enter">{children}</main>
 
           <Footer />

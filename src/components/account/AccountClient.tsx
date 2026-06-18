@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import Image from "next/image";
 import {
   BookOpen,
   CheckCircle2,
+  ChevronDown,
   Edit3,
   Heart,
   ImagePlus,
@@ -21,6 +23,7 @@ import Swal from "sweetalert2";
 import { useAccount } from "@/context/AccountContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
+import { useOrders } from "@/context/OrderContext";
 import type { WishlistItem } from "@/types/wishlist";
 import type {
   AccountLoginInput,
@@ -60,6 +63,25 @@ const initialRegisterForm: AccountRegisterInput = {
   password: "",
   confirmPassword: "",
 };
+
+const currencyFormatter = new Intl.NumberFormat("es-MX", {
+  style: "currency",
+  currency: "MXN",
+});
+
+function formatOrderDate(date: string) {
+  return new Intl.DateTimeFormat("es-MX", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(date));
+}
+
+function getShortOrderId(orderId: string) {
+  return orderId.replace("order-", "").slice(0, 8).toUpperCase();
+}
 
 export function AccountClient() {
   const { isAuthenticated } = useAccount();
@@ -385,6 +407,9 @@ function handleAddWishlistItemToCart(item: WishlistItem) {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState<UserProfile | null>(null);
 
+  const { orders, totalOrders } = useOrders();
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!currentProfile) return;
 
@@ -527,7 +552,7 @@ function handleAddWishlistItemToCart(item: WishlistItem) {
             <ShoppingBag size={24} />
           </div>
           <span>Pedidos</span>
-          <strong>0</strong>
+          <strong>{totalOrders}</strong>
         </article>
 
         <article className={styles.summaryCard}>
@@ -736,18 +761,27 @@ function handleAddWishlistItemToCart(item: WishlistItem) {
 
           <article>
             <h2>Pedidos</h2>
-            <p>
-              Después conectaremos “Continuar compra” para generar pedidos
-              simulados desde el carrito.
-            </p>
-          </article>
 
-          <article>
-            <h2>Foros</h2>
-            <p>
-              Luego unificaremos la sesión de foros con esta cuenta para que los
-              puntos se acumulen aquí.
-            </p>
+            {orders.length === 0 ? (
+              <p>
+                Todavía no tienes pedidos. Cuando finalices una compra desde el carrito,
+                aparecerá aquí tu historial.
+              </p>
+            ) : (
+              <div className={styles.ordersPreview}>
+                {orders.slice(0, 2).map((order) => (
+                  <div key={order.id} className={styles.orderPreviewItem}>
+                    <span>Pedido #{getShortOrderId(order.id)}</span>
+                    <strong>{currencyFormatter.format(order.paidAmount)}</strong>
+                    <small>{formatOrderDate(order.createdAt)}</small>
+                  </div>
+                ))}
+
+                <Link href="/cuenta/pedidos" className={styles.ordersHistoryLink}>
+                  Ver historial completo
+                </Link>
+              </div>
+            )}
           </article>
         </aside>
       </section>

@@ -10,6 +10,10 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useRouter } from "next/navigation";
+import Swal from "sweetalert2";
+import { useAccount } from "@/context/AccountContext";
+import { useOrders } from "@/context/OrderContext";
 import styles from "./CartClient.module.css";
 
 const currencyFormatter = new Intl.NumberFormat("es-MX", {
@@ -18,6 +22,10 @@ const currencyFormatter = new Intl.NumberFormat("es-MX", {
 });
 
 export function CartClient() {
+  const router = useRouter();
+  const { isAuthenticated } = useAccount();
+  const { createOrder } = useOrders();
+
   const {
     items,
     subtotal,
@@ -27,6 +35,74 @@ export function CartClient() {
     removeItem,
     clearCart,
   } = useCart();
+
+  async function handleCheckout() {
+    if (items.length === 0) {
+      await Swal.fire({
+        icon: "info",
+        title: "Carrito vacío",
+        text: "Agrega libros o sagas antes de continuar.",
+        confirmButtonColor: "#521f12",
+        background: "#f6ebd9",
+        color: "#521f12",
+      });
+
+      return;
+    }
+
+    if (!isAuthenticated) {
+      const result = await Swal.fire({
+        icon: "info",
+        title: "Inicia sesión",
+        text: "Para generar un pedido necesitas iniciar sesión o crear una cuenta.",
+        showCancelButton: true,
+        confirmButtonText: "Ir a mi cuenta",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#521f12",
+        cancelButtonColor: "#a0653d",
+        background: "#f6ebd9",
+        color: "#521f12",
+      });
+
+      if (result.isConfirmed) {
+        router.push("/cuenta");
+      }
+
+      return;
+    }
+
+    const result = createOrder(items, subtotal);
+
+    if (!result.ok) {
+      await Swal.fire({
+        icon: "warning",
+        title: "No se pudo generar el pedido",
+        text: result.message,
+        confirmButtonColor: "#521f12",
+        background: "#f6ebd9",
+        color: "#521f12",
+      });
+
+      return;
+    }
+
+    clearCart();
+
+    await Swal.fire({
+      icon: "success",
+      title: "Pedido generado",
+      html: `
+        <p>${result.message}</p>
+        <p><strong>ID:</strong> ${result.orderId}</p>
+      `,
+      confirmButtonText: "Ver mi cuenta",
+      confirmButtonColor: "#521f12",
+      background: "#f6ebd9",
+      color: "#521f12",
+    });
+
+    router.push("/cuenta");
+  }
 
   return (
     <main className={styles.page}>
@@ -140,7 +216,11 @@ export function CartClient() {
               <strong>{currencyFormatter.format(subtotal)}</strong>
             </div>
 
-            <button type="button" className={styles.checkoutButton}>
+            <button
+              type="button"
+              className={styles.checkoutButton}
+              onClick={() => void handleCheckout()}
+            >
               Continuar compra
               <ArrowRight size={17} />
             </button>

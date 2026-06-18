@@ -315,6 +315,11 @@ export function ForumsClient() {
   const [selectedPost, setSelectedPost] = useState<ForumPost | null>(null);
   const [showAllPosts, setShowAllPosts] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [hasHydratedForums, setHasHydratedForums] = useState(false);
+
+  useEffect(() => {
+    setHasHydratedForums(true);
+  }, []);
 
   const selectedForumPosts = useMemo(() => {
     if (!selectedForum) return [];
@@ -528,12 +533,12 @@ export function ForumsClient() {
                     <div className={styles.cardStats}>
                       <span>
                         <MessageCircle size={15} />
-                        {getForumTopicsCount(forum.id)} temas activos
+                        {hasHydratedForums ? getForumTopicsCount(forum.id) : 0} temas activos
                       </span>
 
                       <span>
                         <UsersRound size={15} />
-                        {getForumMembersCount(forum.id)} miembros
+                        {hasHydratedForums ? getForumMembersCount(forum.id) : 0} miembros
                       </span>
                     </div>
                   </div>

@@ -49,6 +49,19 @@ import styles from "./ForumsClient.module.css";
 const USER_STORAGE_KEY = "mel_logged_user";
 const MEMBERSHIPS_STORAGE_KEY = "mel_forum_memberships";
 
+const ACCOUNT_USERS_STORAGE_KEY = "mel_registered_users";
+const ACCOUNT_PROFILES_STORAGE_KEY = "mel_user_profiles";
+
+type StoredAccountUser = {
+  id: string;
+  name?: string;
+};
+
+type StoredAccountProfile = {
+  displayName?: string;
+  avatar?: string | null;
+};
+
 function getForumPostsStorageKey(forumId: string) {
   return `mel_forum_posts_${forumId}`;
 }
@@ -73,6 +86,30 @@ function safeReadJson<T>(key: string, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function getAuthorDisplay(
+  authorId: string,
+  fallbackName: string,
+  fallbackAvatar?: string | null,
+) {
+  const profiles = safeReadJson<Record<string, StoredAccountProfile>>(
+    ACCOUNT_PROFILES_STORAGE_KEY,
+    {},
+  );
+
+  const users = safeReadJson<StoredAccountUser[]>(
+    ACCOUNT_USERS_STORAGE_KEY,
+    [],
+  );
+
+  const profile = profiles[authorId];
+  const user = users.find((storedUser) => storedUser.id === authorId);
+
+  return {
+    name: profile?.displayName ?? user?.name ?? fallbackName,
+    avatar: profile?.avatar ?? fallbackAvatar ?? null,
+  };
 }
 
 function saveJson<T>(key: string, value: T) {
@@ -449,16 +486,16 @@ export function ForumsClient() {
   }
 
   function handleCreatePost(title: string, contentHtml: string) {
-    if (!selectedForum || !currentUser) return;
+    if (!selectedForum || !currentUser) return false;
 
-    if (!requireSubscription()) return;
+    if (!requireSubscription()) return false;
 
     const cleanTitle = title.trim();
     const cleanText = getPlainTextFromHtml(contentHtml);
 
     if (!cleanTitle || !cleanText) {
       showToast("La publicación necesita título y contenido.", "warning");
-      return;
+      return false;
     }
 
     const newPost: ForumPost = {
@@ -468,19 +505,35 @@ export function ForumsClient() {
       contentHtml,
       authorId: currentUser.id,
       authorName: currentUser.username,
-      authorAvatar: currentUser.avatar ?? null,
       createdAt: new Date().toISOString(),
     };
 
-    const currentPosts = getStoredPosts(selectedForum.id);
+    try {
+      const currentPosts = getStoredPosts(selectedForum.id);
 
-    saveStoredPosts(selectedForum.id, [newPost, ...currentPosts]);
-    updateUserForumPoints(currentUser.id, selectedForum.id, POINTS_BY_POST);
+      saveStoredPosts(selectedForum.id, [newPost, ...currentPosts]);
+      updateUserForumPoints(currentUser.id, selectedForum.id, POINTS_BY_POST);
+    } catch (error) {
+      console.error("Error guardando publicación:", error);
+
+      void Swal.fire({
+        icon: "error",
+        title: "No se pudo guardar",
+        text: "El navegador no pudo guardar la publicación. Esto puede pasar si el almacenamiento local está lleno. Intenta quitar imágenes muy pesadas del perfil o limpiar datos locales.",
+        confirmButtonColor: "#521f12",
+        background: "#f6ebd9",
+        color: "#521f12",
+      });
+
+      return false;
+    }
 
     refresh();
     refreshAccountData();
 
     showToast(`Publicación creada. +${POINTS_BY_POST} puntos.`, "success");
+
+    return true;
   }
 
   function handleOpenPost(post: ForumPost) {
@@ -752,7 +805,7 @@ export function ForumsClient() {
 
 type CreatePostCardProps = {
   canParticipate: boolean;
-  onCreatePost: (title: string, contentHtml: string) => void;
+  onCreatePost: (title: string, contentHtml: string) => boolean;
 };
 
 function CreatePostCard({ canParticipate, onCreatePost }: CreatePostCardProps) {
@@ -762,9 +815,9 @@ function CreatePostCard({ canParticipate, onCreatePost }: CreatePostCardProps) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    onCreatePost(title, contentHtml);
+    const wasCreated = onCreatePost(title, contentHtml);
 
-    if (title.trim() && getPlainTextFromHtml(contentHtml)) {
+    if (wasCreated) {
       setTitle("");
       setContentHtml("");
     }
@@ -796,7 +849,7 @@ function CreatePostCard({ canParticipate, onCreatePost }: CreatePostCardProps) {
           value={contentHtml}
           onChange={setContentHtml}
           disabled={!canParticipate}
-          placeholder="Escribe tu comentario..."
+          placeholder="Escribe tu comentario."
         />
 
         <button
@@ -811,6 +864,7 @@ function CreatePostCard({ canParticipate, onCreatePost }: CreatePostCardProps) {
     </section>
   );
 }
+
 
 type RichTextEditorProps = {
   value: string;
@@ -1020,15 +1074,20 @@ function ForumAvatar({ name, avatar, size = "md" }: ForumAvatarProps) {
 }
 
 function PostCard({ post, onOpen }: PostCardProps) {
+  const author = getAuthorDisplay(
+    post.authorId,
+    post.authorName,
+    post.authorAvatar,
+  );
   return (
     <article className={styles.postCard}>
       <div className={styles.postMain}>
-        <ForumAvatar name={post.authorName} avatar={post.authorAvatar} />
+        <ForumAvatar name={author.name} avatar={author.avatar} />
 
         <div>
           <h3>{post.title}</h3>
           <p>
-            {post.authorName} · {formatDate(post.createdAt)}
+            {author.name} · {formatDate(post.createdAt)}
           </p>
         </div>
       </div>
@@ -1061,6 +1120,12 @@ function PostDetailModal({
 }: PostDetailModalProps) {
   const [replyHtml, setReplyHtml] = useState("");
   const [repliesRefreshKey, setRepliesRefreshKey] = useState(0);
+
+  const postAuthor = getAuthorDisplay(
+    post.authorId,
+    post.authorName,
+    post.authorAvatar,
+  );
 
   const replies = useMemo(() => {
     return getStoredReplies(post.forumId, post.id);
@@ -1095,17 +1160,29 @@ function PostDetailModal({
       contentHtml: replyHtml,
       authorId: currentUser.id,
       authorName: currentUser.username,
-      authorAvatar: currentUser.avatar ?? null,
       createdAt: new Date().toISOString(),
     };
 
-    saveStoredReplies(post.forumId, post.id, [...replies, newReply]);
-    updateUserForumPoints(currentUser.id, post.forumId, POINTS_BY_REPLY);
+    try {
+      saveStoredReplies(post.forumId, post.id, [...replies, newReply]);
+      updateUserForumPoints(currentUser.id, post.forumId, POINTS_BY_REPLY);
+    } catch (error) {
+      console.error("Error guardando respuesta:", error);
+
+      void Swal.fire({
+        icon: "error",
+        title: "No se pudo guardar",
+        text: "El navegador no pudo guardar la respuesta. Esto puede pasar si el almacenamiento local está lleno.",
+        confirmButtonColor: "#521f12",
+        background: "#f6ebd9",
+        color: "#521f12",
+      });
+
+      return;
+    }
 
     setReplyHtml("");
     refreshReplies();
-    onPointsChanged();
-
     showToast(`Respuesta publicada. +${POINTS_BY_REPLY} puntos.`, "success");
   }
 
@@ -1176,14 +1253,14 @@ function PostDetailModal({
         <header className={styles.modalHeader}>
           <div className={styles.modalAuthorRow}>
             <ForumAvatar
-              name={post.authorName}
-              avatar={post.authorAvatar}
+              name={postAuthor.name}
+              avatar={postAuthor.avatar}
               size="sm"
             />
 
             <div>
               <span>
-                {post.authorName} · {formatDate(post.createdAt)}
+                {postAuthor.name} · {formatDate(post.createdAt)}
               </span>
 
               <h2>{post.title}</h2>
@@ -1216,44 +1293,52 @@ function PostDetailModal({
 
           <div className={styles.repliesList}>
             {replies.length === 0 ? (
-              <p className={styles.emptyReplies}>
-                Todavía no hay respuestas en esta publicación.
-              </p>
-            ) : (
-              replies.map((reply) => (
-                <article key={reply.id} className={styles.replyCard}>
-                  <div className={styles.replyHeader}>
-                    <div className={styles.replyAuthorRow}>
-                      <ForumAvatar
-                        name={reply.authorName}
-                        avatar={reply.authorAvatar}
-                        size="sm"
-                      />
+  <p className={styles.emptyReplies}>
+    Todavía no hay respuestas en esta publicación.
+  </p>
+              ) : (
+                replies.map((reply) => {
+                  const replyAuthor = getAuthorDisplay(
+                    reply.authorId,
+                    reply.authorName,
+                    reply.authorAvatar,
+                  );
 
-                      <div>
-                        <strong>{reply.authorName}</strong>
-                        <span>{formatDate(reply.createdAt)}</span>
+                  return (
+                    <article key={reply.id} className={styles.replyCard}>
+                      <div className={styles.replyHeader}>
+                        <div className={styles.replyAuthorRow}>
+                          <ForumAvatar
+                            name={replyAuthor.name}
+                            avatar={replyAuthor.avatar}
+                            size="sm"
+                          />
+
+                          <div>
+                            <strong>{replyAuthor.name}</strong>
+                            <span>{formatDate(reply.createdAt)}</span>
+                          </div>
+                        </div>
+
+                        {currentUser?.id === reply.authorId && (
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteReply(reply)}
+                            aria-label="Eliminar respuesta"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
                       </div>
-                    </div>
 
-                    {currentUser?.id === reply.authorId && (
-                      <button
-                        type="button"
-                        onClick={() => void handleDeleteReply(reply)}
-                        aria-label="Eliminar respuesta"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    )}
-                  </div>
-
-                  <div
-                    className={styles.replyBody}
-                    dangerouslySetInnerHTML={{ __html: reply.contentHtml }}
-                  />
-                </article>
-              ))
-            )}
+                      <div
+                        className={styles.replyBody}
+                        dangerouslySetInnerHTML={{ __html: reply.contentHtml }}
+                      />
+                    </article>
+                  );
+                })
+              )}
           </div>
         </section>
 

@@ -4,15 +4,23 @@ import Image from "next/image";
 import {
   ChevronLeft,
   ChevronRight,
+  Heart,
   Search,
   ShoppingCart,
   X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useRef, useState } from "react";
+import Swal from "sweetalert2";
+import { ClientPortal } from "@/components/ui/ClientPortal";
+import { useAccount } from "@/context/AccountContext";
+import { useCart } from "@/context/CartContext";
+import {
+  type WishlistToggleResult,
+  useWishlist,
+} from "@/context/WishlistContext";
 import { catalogData, categoryLabels, categoryOrder } from "@/data/catalog";
 import type { Book, Saga } from "@/types/book";
-import { useCart } from "@/context/CartContext";
-import { ClientPortal } from "@/components/ui/ClientPortal";
 import styles from "./CatalogClient.module.css";
 
 const currencyFormatter = new Intl.NumberFormat("es-MX", {
@@ -21,10 +29,19 @@ const currencyFormatter = new Intl.NumberFormat("es-MX", {
 });
 
 export function CatalogClient() {
+  const router = useRouter();
+  const { isAuthenticated } = useAccount();
+  const { addBook, addSaga } = useCart();
+  const {
+    toggleBook,
+    toggleSaga,
+    isBookSaved,
+    isSagaSaved,
+  } = useWishlist();
+
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [selectedSaga, setSelectedSaga] = useState<Saga | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const { addBook, addSaga } = useCart();
 
   const filteredBooks = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -57,6 +74,41 @@ export function CatalogClient() {
     return catalogData.libros.filter((book) => saga.libros.includes(book.id));
   }
 
+  async function handleWishlistResult(result: WishlistToggleResult) {
+    if (!result.ok) {
+      const loginResult = await Swal.fire({
+        icon: "info",
+        title: "Inicia sesión",
+        text: "Para guardar favoritos necesitas iniciar sesión o crear una cuenta.",
+        showCancelButton: true,
+        confirmButtonText: "Ir a mi cuenta",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#521f12",
+        cancelButtonColor: "#a0653d",
+        background: "#f6ebd9",
+        color: "#521f12",
+      });
+
+      if (loginResult.isConfirmed) {
+        router.push("/cuenta");
+      }
+
+      return;
+    }
+
+    void Swal.fire({
+      toast: true,
+      position: "top-end",
+      icon: result.saved ? "success" : "info",
+      title: result.message,
+      showConfirmButton: false,
+      timer: 2200,
+      timerProgressBar: true,
+      background: "#f6ebd9",
+      color: "#521f12",
+    });
+  }
+
   return (
     <main className={styles.page}>
       <header className={styles.hero}>
@@ -85,6 +137,23 @@ export function CatalogClient() {
         <CatalogCarousel>
           {catalogData.sagas.map((saga) => (
             <article key={saga.id} className={styles.bookCard}>
+              <button
+                type="button"
+                className={
+                  isSagaSaved(saga.id)
+                    ? `${styles.wishlistButton} ${styles.wishlistButtonActive}`
+                    : styles.wishlistButton
+                }
+                onClick={() => void handleWishlistResult(toggleSaga(saga))}
+                aria-label={
+                  isSagaSaved(saga.id)
+                    ? `Quitar ${saga.nombre} de wishlist`
+                    : `Guardar ${saga.nombre} en wishlist`
+                }
+              >
+                <Heart size={18} fill={isSagaSaved(saga.id) ? "currentColor" : "none"} />
+              </button>
+
               <div className={styles.coverWrapper}>
                 <Image
                   src={saga.portada}
@@ -124,6 +193,10 @@ export function CatalogClient() {
                 <BookCard
                   key={book.id}
                   book={book}
+                  isSaved={isBookSaved(book.id)}
+                  onToggleWishlist={() =>
+                    void handleWishlistResult(toggleBook(book))
+                  }
                   onOpen={() => setSelectedBook(book)}
                 />
               ))}
@@ -136,8 +209,12 @@ export function CatalogClient() {
         <ClientPortal>
           <BookModal
             book={selectedBook}
+            isSaved={isBookSaved(selectedBook.id)}
             onClose={() => setSelectedBook(null)}
             onAddToCart={() => addBook(selectedBook)}
+            onToggleWishlist={() =>
+              void handleWishlistResult(toggleBook(selectedBook))
+            }
           />
         </ClientPortal>
       )}
@@ -147,12 +224,16 @@ export function CatalogClient() {
           <SagaModal
             saga={selectedSaga}
             books={getSagaBooks(selectedSaga)}
+            isSaved={isSagaSaved(selectedSaga.id)}
             onClose={() => setSelectedSaga(null)}
             onOpenBook={(book) => {
               setSelectedSaga(null);
               setSelectedBook(book);
             }}
             onAddToCart={() => addSaga(selectedSaga, selectedSaga.libros.length)}
+            onToggleWishlist={() =>
+              void handleWishlistResult(toggleSaga(selectedSaga))
+            }
           />
         </ClientPortal>
       )}
@@ -217,12 +298,36 @@ function CatalogCarousel({ children, compact = false }: CatalogCarouselProps) {
 
 type BookCardProps = {
   book: Book;
+  isSaved: boolean;
+  onToggleWishlist: () => void;
   onOpen: () => void;
 };
 
-function BookCard({ book, onOpen }: BookCardProps) {
+function BookCard({
+  book,
+  isSaved,
+  onToggleWishlist,
+  onOpen,
+}: BookCardProps) {
   return (
     <article className={styles.bookCard}>
+      <button
+        type="button"
+        className={
+          isSaved
+            ? `${styles.wishlistButton} ${styles.wishlistButtonActive}`
+            : styles.wishlistButton
+        }
+        onClick={onToggleWishlist}
+        aria-label={
+          isSaved
+            ? `Quitar ${book.titulo} de wishlist`
+            : `Guardar ${book.titulo} en wishlist`
+        }
+      >
+        <Heart size={18} fill={isSaved ? "currentColor" : "none"} />
+      </button>
+
       <div className={styles.coverWrapper}>
         <Image
           src={book.portada}
@@ -256,11 +361,19 @@ function BookCard({ book, onOpen }: BookCardProps) {
 
 type BookModalProps = {
   book: Book;
+  isSaved: boolean;
   onClose: () => void;
   onAddToCart: () => void;
+  onToggleWishlist: () => void;
 };
 
-function BookModal({ book, onClose, onAddToCart }: BookModalProps) {
+function BookModal({
+  book,
+  isSaved,
+  onClose,
+  onAddToCart,
+  onToggleWishlist,
+}: BookModalProps) {
   return (
     <div className={styles.modalBackdrop} onClick={onClose}>
       <article
@@ -304,10 +417,25 @@ function BookModal({ book, onClose, onAddToCart }: BookModalProps) {
           <p>{book.sinopsis}</p>
         </section>
 
-        <button type="button" className={styles.cartButton} onClick={onAddToCart}>
-          <ShoppingCart size={17} />
-          Agregar al carrito
-        </button>
+        <div className={styles.modalActions}>
+          <button type="button" className={styles.cartButton} onClick={onAddToCart}>
+            <ShoppingCart size={17} />
+            Agregar al carrito
+          </button>
+
+          <button
+            type="button"
+            className={
+              isSaved
+                ? `${styles.wishlistModalButton} ${styles.wishlistModalButtonActive}`
+                : styles.wishlistModalButton
+            }
+            onClick={onToggleWishlist}
+          >
+            <Heart size={17} fill={isSaved ? "currentColor" : "none"} />
+            {isSaved ? "Quitar de wishlist" : "Guardar en wishlist"}
+          </button>
+        </div>
       </article>
     </div>
   );
@@ -316,17 +444,21 @@ function BookModal({ book, onClose, onAddToCart }: BookModalProps) {
 type SagaModalProps = {
   saga: Saga;
   books: Book[];
+  isSaved: boolean;
   onClose: () => void;
   onOpenBook: (book: Book) => void;
   onAddToCart: () => void;
+  onToggleWishlist: () => void;
 };
 
 function SagaModal({
   saga,
   books,
+  isSaved,
   onClose,
   onOpenBook,
   onAddToCart,
+  onToggleWishlist,
 }: SagaModalProps) {
   return (
     <div className={styles.modalBackdrop} onClick={onClose}>
@@ -395,10 +527,25 @@ function SagaModal({
           </CatalogCarousel>
         </section>
 
-        <button type="button" className={styles.cartButton} onClick={onAddToCart}>
-          <ShoppingCart size={17} />
-          Agregar paquete de saga al carrito
-        </button>
+        <div className={styles.modalActions}>
+          <button type="button" className={styles.cartButton} onClick={onAddToCart}>
+            <ShoppingCart size={17} />
+            Agregar paquete de saga al carrito
+          </button>
+
+          <button
+            type="button"
+            className={
+              isSaved
+                ? `${styles.wishlistModalButton} ${styles.wishlistModalButtonActive}`
+                : styles.wishlistModalButton
+            }
+            onClick={onToggleWishlist}
+          >
+            <Heart size={17} fill={isSaved ? "currentColor" : "none"} />
+            {isSaved ? "Quitar de wishlist" : "Guardar paquete en wishlist"}
+          </button>
+        </div>
       </article>
     </div>
   );

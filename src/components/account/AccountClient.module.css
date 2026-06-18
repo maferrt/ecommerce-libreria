@@ -534,3 +534,89 @@
     padding: 1rem;
   }
 }
+
+.wishlistPreview {
+  margin-top: 1rem;
+  display: grid;
+  max-height: 34rem;
+  gap: 0.75rem;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(82, 31, 18, 0.35) rgba(82, 31, 18, 0.08);
+}
+
+.wishlistPreview::-webkit-scrollbar {
+  width: 0.55rem;
+}
+
+.wishlistPreview::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(82, 31, 18, 0.08);
+}
+
+.wishlistPreview::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(82, 31, 18, 0.35);
+}
+
+.wishlistItem {
+  display: grid;
+  grid-template-columns: 3.8rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  border-radius: 1.1rem;
+  background: rgba(255, 255, 255, 0.42);
+  padding: 0.7rem;
+}
+
+.wishlistItem img {
+  height: 5.4rem;
+  width: 3.7rem;
+  border-radius: 0.6rem;
+  object-fit: cover;
+  box-shadow: 0 10px 20px rgba(82, 31, 18, 0.14);
+}
+
+.wishlistItem span {
+  display: block;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mel-caramel);
+}
+
+.wishlistItem strong {
+  margin-top: 0.2rem;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-family: var(--font-cormorant), serif;
+  font-size: 1.15rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--mel-brown);
+}
+
+.wishlistItem small {
+  margin-top: 0.25rem;
+  display: block;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.72rem;
+  color: var(--mel-brown-soft);
+}
+
+.wishlistItem button {
+  margin-top: 0.45rem;
+  display: inline-flex;
+  border-radius: 999px;
+  background: rgba(132, 42, 42, 0.12);
+  padding: 0.42rem 0.65rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: #7a2626;
+}

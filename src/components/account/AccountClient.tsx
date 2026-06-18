@@ -19,6 +19,9 @@ import {
 import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { useAccount } from "@/context/AccountContext";
+import { useWishlist } from "@/context/WishlistContext";
+import { useCart } from "@/context/CartContext";
+import type { WishlistItem } from "@/types/wishlist";
 import type {
   AccountLoginInput,
   AccountRegisterInput,
@@ -360,6 +363,25 @@ function AccountDashboard() {
     logoutUser,
     updateProfile,
   } = useAccount();
+  const { addItem: addCartItem } = useCart();
+
+function handleAddWishlistItemToCart(item: WishlistItem) {
+  addCartItem({
+    id: item.id,
+    type: item.type,
+    productId: item.productId,
+    title: item.title,
+    subtitle: item.subtitle,
+    image: item.image,
+    price: item.price,
+    meta: item.meta,
+  });
+}
+  const {
+  items: wishlistItems,
+  totalWishlistItems,
+  removeItem: removeWishlistItem,
+} = useWishlist();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState<UserProfile | null>(null);
 
@@ -497,7 +519,7 @@ function AccountDashboard() {
             <Heart size={24} />
           </div>
           <span>Wishlist</span>
-          <strong>0</strong>
+          <strong>{totalWishlistItems}</strong>
         </article>
 
         <article className={styles.summaryCard}>
@@ -666,10 +688,50 @@ function AccountDashboard() {
         <aside className={styles.sidePanel}>
           <article>
             <h2>Wishlist</h2>
-            <p>
-              En el siguiente paso conectaremos los botones de favoritos desde el
-              catálogo.
-            </p>
+
+            {wishlistItems.length === 0 ? (
+              <p>
+                Todavía no tienes favoritos guardados. Puedes agregarlos desde el
+                catálogo con el botón de corazón.
+              </p>
+            ) : (
+              <div className={styles.wishlistPreview}>
+                {wishlistItems.map((item) => (
+                  <div key={item.id} className={styles.wishlistItem}>
+                    <Image
+                      src={item.image}
+                      alt={item.title}
+                      width={70}
+                      height={95}
+                    />
+
+                    <div>
+                      <span>{item.type === "saga" ? "Saga" : "Libro"}</span>
+                      <strong>{item.title}</strong>
+                      <small>{item.subtitle}</small>
+
+                      <div className={styles.wishlistActions}>
+                        <button
+                          type="button"
+                          className={styles.wishlistCartButton}
+                          onClick={() => handleAddWishlistItemToCart(item)}
+                        >
+                          Agregar al carrito
+                        </button>
+
+                        <button
+                          type="button"
+                          className={styles.wishlistRemoveButton}
+                          onClick={() => removeWishlistItem(item.id)}
+                        >
+                          Quitar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </article>
 
           <article>

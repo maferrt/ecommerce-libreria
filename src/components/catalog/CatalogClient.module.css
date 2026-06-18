@@ -225,6 +225,8 @@
 }
 
 .bookCard {
+  position: relative;
+  isolation: isolate;
   scroll-snap-align: start;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.58);
@@ -241,6 +243,38 @@
   transform: translateY(-6px);
   background: rgba(246, 235, 217, 0.96);
   box-shadow: 0 24px 45px rgba(82, 31, 18, 0.16);
+}
+
+.wishlistButton {
+  position: absolute;
+  right: 0.85rem;
+  top: 0.85rem;
+  z-index: 4;
+  display: inline-flex;
+  height: 2.55rem;
+  width: 2.55rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(246, 235, 217, 0.9);
+  color: var(--mel-brown);
+  box-shadow: 0 12px 24px rgba(82, 31, 18, 0.16);
+  backdrop-filter: blur(8px);
+  transition:
+    transform 200ms ease,
+    background-color 200ms ease,
+    color 200ms ease;
+}
+
+.wishlistButton:hover {
+  transform: scale(1.06);
+  background: var(--mel-brown);
+  color: var(--mel-cream);
+}
+
+.wishlistButtonActive {
+  background: var(--mel-brown);
+  color: var(--mel-cream);
 }
 
 .coverWrapper {

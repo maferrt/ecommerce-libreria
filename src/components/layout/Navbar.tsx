@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ShoppingCart, UserRound } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useCart } from "@/context/CartContext";
 
 const navigationLinks = [
   { href: "/", label: "Inicio" },
@@ -17,19 +18,26 @@ const navigationLinks = [
 export function Navbar() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { totalItems, openCart } = useCart();
 
   const isActiveLink = (href: string) => {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   };
 
+  function handleOpenCart() {
+    setIsMenuOpen(false);
+    openCart();
+  }
+
   return (
-    <header className="fixed left-0 right-0 top-0 z-[9999] px-4 pt-4">
+    <header className="fixed left-0 right-0 top-0 z-[100] px-4 pt-4">
       <nav className="mx-auto flex max-w-7xl items-center justify-between rounded-[2rem] border border-white/50 bg-[rgba(248,225,193,0.82)] px-5 py-3 shadow-[0_18px_45px_rgba(82,31,18,0.13)] backdrop-blur-xl transition-all duration-300 hover:shadow-[0_22px_55px_rgba(82,31,18,0.18)]">
         <Link
           href="/"
           className="group flex items-center gap-3"
           aria-label="Ir al inicio de Mundo Entre Libros"
+          onClick={() => setIsMenuOpen(false)}
         >
           <div className="relative h-16 w-16 overflow-hidden rounded-full bg-[var(--mel-paper)] shadow-md transition-transform duration-300 group-hover:rotate-[-4deg] group-hover:scale-105">
             <Image
@@ -87,20 +95,27 @@ export function Navbar() {
 
           <div className="ml-3 flex items-center gap-2">
             <Link
-                href="/cuenta"
-                className="nav-icon-button"
-                aria-label="Ir a mi cuenta"
+              href="/cuenta"
+              className="nav-icon-button"
+              aria-label="Ir a mi cuenta"
             >
-                <UserRound size={26} strokeWidth={2.4} />
+              <UserRound size={26} strokeWidth={2.4} />
             </Link>
 
-            <Link
-                href="/carrito"
-                className="nav-icon-button"
-                aria-label="Ir al carrito"
+            <button
+              type="button"
+              className="nav-icon-button relative"
+              aria-label={`Abrir carrito con ${totalItems} productos`}
+              onClick={handleOpenCart}
             >
-                <ShoppingCart size={26} strokeWidth={2.4} />
-            </Link>
+              <ShoppingCart size={26} strokeWidth={2.4} />
+
+              {totalItems > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--mel-brown)] px-1 font-sans text-[0.68rem] font-black leading-none text-[var(--mel-cream)]">
+                  {totalItems}
+                </span>
+              )}
+            </button>
           </div>
         </div>
       </nav>
@@ -120,7 +135,7 @@ export function Navbar() {
                     className={`block rounded-2xl px-4 py-3 font-serif text-xl font-bold transition-all duration-300 ${
                       isActive
                         ? "bg-[var(--mel-brown)] text-[var(--mel-cream)]"
-                        : "text-[var(--mel-brown)] hover:bg-[var(--mel-warm)] hover:translate-x-1"
+                        : "text-[var(--mel-brown)] hover:translate-x-1 hover:bg-[var(--mel-warm)]"
                     }`}
                   >
                     {link.label}
@@ -139,13 +154,18 @@ export function Navbar() {
               Mi cuenta
             </Link>
 
-            <Link
-              href="/carrito"
-              onClick={() => setIsMenuOpen(false)}
-              className="mobile-action-link"
+            <button
+              type="button"
+              onClick={handleOpenCart}
+              className="mobile-action-link relative"
             >
               Carrito
-            </Link>
+              {totalItems > 0 && (
+                <span className="ml-2 rounded-full bg-[var(--mel-brown)] px-2 py-0.5 font-sans text-xs font-black text-[var(--mel-cream)]">
+                  {totalItems}
+                </span>
+              )}
+            </button>
           </div>
         </div>
       )}

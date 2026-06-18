@@ -11,6 +11,7 @@ import {
 import { type ReactNode, useMemo, useRef, useState } from "react";
 import { catalogData, categoryLabels, categoryOrder } from "@/data/catalog";
 import type { Book, Saga } from "@/types/book";
+import { useCart } from "@/context/CartContext";
 import styles from "./CatalogClient.module.css";
 
 const currencyFormatter = new Intl.NumberFormat("es-MX", {
@@ -22,6 +23,7 @@ export function CatalogClient() {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [selectedSaga, setSelectedSaga] = useState<Saga | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const { addBook, addSaga } = useCart();
 
   const filteredBooks = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -130,7 +132,11 @@ export function CatalogClient() {
       })}
 
       {selectedBook && (
-        <BookModal book={selectedBook} onClose={() => setSelectedBook(null)} />
+        <BookModal
+          book={selectedBook}
+          onClose={() => setSelectedBook(null)}
+          onAddToCart={() => addBook(selectedBook)}
+        />
       )}
 
       {selectedSaga && (
@@ -142,6 +148,7 @@ export function CatalogClient() {
             setSelectedSaga(null);
             setSelectedBook(book);
           }}
+          onAddToCart={() => addSaga(selectedSaga, selectedSaga.libros.length)}
         />
       )}
     </main>
@@ -245,9 +252,10 @@ function BookCard({ book, onOpen }: BookCardProps) {
 type BookModalProps = {
   book: Book;
   onClose: () => void;
+  onAddToCart: () => void;
 };
 
-function BookModal({ book, onClose }: BookModalProps) {
+function BookModal({ book, onClose, onAddToCart }: BookModalProps) {
   return (
     <div className={styles.modalBackdrop} onClick={onClose}>
       <article
@@ -291,7 +299,7 @@ function BookModal({ book, onClose }: BookModalProps) {
           <p>{book.sinopsis}</p>
         </section>
 
-        <button type="button" className={styles.cartButton}>
+        <button type="button" className={styles.cartButton} onClick={onAddToCart}>
           <ShoppingCart size={17} />
           Agregar al carrito
         </button>
@@ -305,9 +313,16 @@ type SagaModalProps = {
   books: Book[];
   onClose: () => void;
   onOpenBook: (book: Book) => void;
+  onAddToCart: () => void;
 };
 
-function SagaModal({ saga, books, onClose, onOpenBook }: SagaModalProps) {
+function SagaModal({
+  saga,
+  books,
+  onClose,
+  onOpenBook,
+  onAddToCart,
+}: SagaModalProps) {
   return (
     <div className={styles.modalBackdrop} onClick={onClose}>
       <article
@@ -375,9 +390,9 @@ function SagaModal({ saga, books, onClose, onOpenBook }: SagaModalProps) {
           </CatalogCarousel>
         </section>
 
-        <button type="button" className={styles.cartButton}>
+        <button type="button" className={styles.cartButton} onClick={onAddToCart}>
           <ShoppingCart size={17} />
-          Agregar saga al carrito
+          Agregar paquete de saga al carrito
         </button>
       </article>
     </div>

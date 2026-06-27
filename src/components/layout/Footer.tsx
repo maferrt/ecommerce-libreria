@@ -22,12 +22,6 @@ const teamSprites = [
     github: "https://github.com/iladricg14-lab",
     spriteClass: "pixel-ilse",
   },
-  {
-    name: "Rodrigi",
-    role: "Desarrollador",
-    github: "https://github.com/Rock2612",
-    spriteClass: "pixel-rodrigo",
-  },
 ];
 
 export function Footer() {

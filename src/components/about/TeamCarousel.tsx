@@ -14,7 +14,7 @@ const teamMembers = [
     image: "/images/team/Maria_Fernanda_Rodriguez_Trinidad.png",
     linkedin: "https://www.linkedin.com/in/mar%C3%ADa-fernanda-rodr%C3%ADguez-trinidad-926346396/",
     description:
-      "Participa en el diseño visual, estructura frontend, experiencia de usuario y reconstrucción del proyecto en Next.js.",
+      "Participa en el diseño visual, estructura frontend, experiencia de usuario, reconstrucción del proyecto en Next.js e integración del funcionamiento lógico con Java y Spring Boot.",
   },
   {
     name: "Ilse Adriana Careo Galicia",
@@ -23,16 +23,7 @@ const teamMembers = [
     image: "/images/team/Ilse_Adriana_Careo_Galicia.jpg",
     linkedin: "https://www.linkedin.com/in/ilse-adriana-careo-galicia/",
     description:
-      "Colabora en el desarrollo del proyecto, aportando ideas para la organización visual y construcción de secciones.",
-  },
-  {
-    name: "Rodrigo González Pastrana",
-    shortName: "Rodro",
-    role: "Desarrollador",
-    image: "/images/team/Rodrigo_Gonzalez_Pastrana.jpg",
-    linkedin: "https://www.linkedin.com/in/rodrigo-gonz%C3%A1lez-pastrana/",
-    description:
-      "Colabora en el desarrollo del proyecto, aportando ideas para la arquitectura de funcionalidades.",
+      "Colabora en el desarrollo del proyecto, aportando ideas para la organización visual, construcción de secciones e integración de base de datos relacional.",
   },
 ];
 

@@ -58,6 +58,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/wishlist/sagas/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/wishlist/items/**").authenticated()
 
+                        .requestMatchers(HttpMethod.GET, "/api/cart").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/cart/books/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/cart/sagas/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/cart/items/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/cart/items/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/cart").authenticated()
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(

@@ -65,6 +65,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/cart/items/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/cart").authenticated()
 
+                        .requestMatchers(HttpMethod.POST, "/api/orders").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/orders").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/orders/**").authenticated()
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(

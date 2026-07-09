@@ -46,6 +46,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/profile").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/profile/address").authenticated()
 
+                        .requestMatchers(HttpMethod.GET, "/api/catalog").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/books").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/books/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/sagas").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/sagas/**").permitAll()
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(

@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @Table(
         name = "books",
         uniqueConstraints = {
+                @UniqueConstraint(name = "uk_books_catalog_id", columnNames = "catalog_id"),
                 @UniqueConstraint(name = "uk_books_isbn", columnNames = "isbn")
         }
 )
@@ -23,6 +24,9 @@ public class Book {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "catalog_id", nullable = false)
+    private Long catalogId;
 
     @Column(nullable = false, length = 180)
     private String title;

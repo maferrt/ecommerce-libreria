@@ -7,11 +7,13 @@ import java.util.Optional;
 
 public interface BookRepository extends JpaRepository<Book, Long> {
 
-    List<Book> findAllByActiveTrueOrderByIdAsc();
+    List<Book> findAllByActiveTrueOrderByCatalogIdAsc();
 
-    List<Book> findAllByCategorySlugAndActiveTrueOrderByIdAsc(String categorySlug);
+    List<Book> findAllByCategorySlugAndActiveTrueOrderByCatalogIdAsc(String categorySlug);
 
-    Optional<Book> findByIdAndActiveTrue(Long id);
+    Optional<Book> findByCatalogIdAndActiveTrue(Long catalogId);
+
+    boolean existsByCatalogId(Long catalogId);
 
     boolean existsByIsbn(String isbn);
 }

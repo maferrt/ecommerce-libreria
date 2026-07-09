@@ -1,11 +1,20 @@
 package com.mundoentrelibros.api.catalog;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mundoentrelibros.api.catalog.seed.CatalogSeedBook;
+import com.mundoentrelibros.api.catalog.seed.CatalogSeedData;
+import com.mundoentrelibros.api.catalog.seed.CatalogSeedSaga;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
+import java.io.InputStream;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -14,102 +23,137 @@ public class CatalogDataSeeder implements CommandLineRunner {
     private final CategoryRepository categoryRepository;
     private final BookRepository bookRepository;
     private final SagaRepository sagaRepository;
+    private final ObjectMapper objectMapper;
+    private final ResourceLoader resourceLoader;
+
+    private static final Map<String, String> CATEGORY_LABELS = new LinkedHashMap<>();
+
+    static {
+        CATEGORY_LABELS.put("novela-juvenil", "Novela Juvenil");
+        CATEGORY_LABELS.put("fantasia", "Fantasía");
+        CATEGORY_LABELS.put("terror", "Terror");
+        CATEGORY_LABELS.put("desarrollo-personal", "Desarrollo personal");
+        CATEGORY_LABELS.put("ciencia-ficcion", "Ciencia Ficción");
+        CATEGORY_LABELS.put("educacion-financiera", "Educación financiera");
+        CATEGORY_LABELS.put("psicologia", "Psicología");
+    }
 
     @Override
+    @Transactional
     public void run(String... args) {
-        if (categoryRepository.count() == 0) {
-            seedCategories();
+        if (bookRepository.count() > 0 || sagaRepository.count() > 0) {
+            return;
         }
 
-        if (bookRepository.count() == 0) {
-            seedBooksAndSagas();
+        seedCategories();
+
+        CatalogSeedData catalogData = loadCatalogData();
+
+        Map<Long, Book> savedBooksByCatalogId = seedBooks(catalogData.libros());
+
+        seedSagas(catalogData.sagas(), savedBooksByCatalogId);
+    }
+
+    private CatalogSeedData loadCatalogData() {
+        try {
+            Resource resource = resourceLoader.getResource("classpath:data/catalog.json");
+
+            try (InputStream inputStream = resource.getInputStream()) {
+                return objectMapper.readValue(inputStream, CatalogSeedData.class);
+            }
+        } catch (Exception exception) {
+            throw new IllegalStateException("No se pudo leer data/catalog.json", exception);
         }
     }
 
     private void seedCategories() {
-        categoryRepository.saveAll(List.of(
-                createCategory("novela-juvenil", "Novela Juvenil", 1),
-                createCategory("fantasia", "Fantasía", 2),
-                createCategory("terror", "Terror", 3),
-                createCategory("desarrollo-personal", "Desarrollo personal", 4),
-                createCategory("ciencia-ficcion", "Ciencia Ficción", 5),
-                createCategory("educacion-financiera", "Educación financiera", 6),
-                createCategory("psicologia", "Psicología", 7)
-        ));
+        if (categoryRepository.count() > 0) {
+            return;
+        }
+
+        int order = 1;
+
+        for (Map.Entry<String, String> category : CATEGORY_LABELS.entrySet()) {
+            Category newCategory = Category.builder()
+                    .slug(category.getKey())
+                    .name(category.getValue())
+                    .displayOrder(order)
+                    .active(true)
+                    .build();
+
+            categoryRepository.save(newCategory);
+
+            order++;
+        }
     }
 
-    private void seedBooksAndSagas() {
-        Category novelaJuvenil = getCategory("novela-juvenil");
+    private Map<Long, Book> seedBooks(List<CatalogSeedBook> seedBooks) {
+        Map<Long, Book> savedBooksByCatalogId = new LinkedHashMap<>();
 
-        Book book1 = Book.builder()
-                .title("Los Juegos del Hambre")
-                .author("Suzanne Collins")
-                .category(novelaJuvenil)
-                .sagaName("Los Juegos del Hambre")
-                .publisher("Editorial Molino")
-                .edition("Edición Especial Cantos Pintados")
-                .isbn("9786073854672")
-                .price(BigDecimal.valueOf(499))
-                .coverImage("/images/books/novela-juvenil/Juegos_del_hambre.jpg")
-                .synopsis("Katniss Everdeen se ofrece como voluntaria para participar en un mortal espectáculo televisado donde solo puede haber un ganador.")
-                .active(true)
-                .build();
+        for (CatalogSeedBook seedBook : seedBooks) {
+            Category category = categoryRepository.findBySlug(seedBook.categoria())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Categoría no encontrada: " + seedBook.categoria()
+                    ));
 
-        Book book2 = Book.builder()
-                .title("En llamas")
-                .author("Suzanne Collins")
-                .category(novelaJuvenil)
-                .sagaName("Los Juegos del Hambre")
-                .publisher("Editorial Molino")
-                .edition("Edición Especial Cantos Pintados")
-                .isbn("9786073854689")
-                .price(BigDecimal.valueOf(499))
-                .coverImage("/images/books/novela-juvenil/En_llamas.jpg")
-                .synopsis("Katniss y Peeta vuelven al centro de una rebelión que amenaza al Capitolio.")
-                .active(true)
-                .build();
+            Book newBook = Book.builder()
+                    .catalogId(seedBook.id())
+                    .title(seedBook.titulo())
+                    .author(seedBook.autor())
+                    .category(category)
+                    .sagaName(seedBook.saga())
+                    .publisher(seedBook.editorial())
+                    .edition(seedBook.edicion())
+                    .isbn(seedBook.isbn())
+                    .price(seedBook.precio())
+                    .coverImage(seedBook.portada())
+                    .synopsis(seedBook.sinopsis())
+                    .active(true)
+                    .build();
 
-        Book book3 = Book.builder()
-                .title("Sinsajo")
-                .author("Suzanne Collins")
-                .category(novelaJuvenil)
-                .sagaName("Los Juegos del Hambre")
-                .publisher("Editorial Molino")
-                .edition("Edición Especial Cantos Pintados")
-                .isbn("9786073854696")
-                .price(BigDecimal.valueOf(499))
-                .coverImage("/images/books/novela-juvenil/Sinsajo.jpg")
-                .synopsis("Katniss se convierte en el símbolo de la rebelión contra el Capitolio.")
-                .active(true)
-                .build();
+            Book savedBook = bookRepository.save(newBook);
 
-        List<Book> savedBooks = bookRepository.saveAll(List.of(book1, book2, book3));
+            savedBooksByCatalogId.put(seedBook.id(), savedBook);
+        }
 
-        Saga saga = Saga.builder()
-                .slug("los-juegos-del-hambre")
-                .name("Los Juegos del Hambre")
-                .sagaIsbn("9786073854702")
-                .sagaPrice(BigDecimal.valueOf(1299))
-                .coverImage("/images/books/sagas/Saga_juegos_del_hambre.jpg")
-                .description("Una saga distópica sobre supervivencia, rebelión y resistencia.")
-                .books(savedBooks)
-                .active(true)
-                .build();
-
-        sagaRepository.save(saga);
+        return savedBooksByCatalogId;
     }
 
-    private Category createCategory(String slug, String name, int displayOrder) {
-        return Category.builder()
-                .slug(slug)
-                .name(name)
-                .displayOrder(displayOrder)
-                .active(true)
-                .build();
-    }
+    private void seedSagas(
+            List<CatalogSeedSaga> seedSagas,
+            Map<Long, Book> savedBooksByCatalogId
+    ) {
+        for (CatalogSeedSaga seedSaga : seedSagas) {
+            List<Book> sagaBooks = seedSaga.libros()
+                    .stream()
+                    .map(bookId -> {
+                        Book book = savedBooksByCatalogId.get(bookId);
 
-    private Category getCategory(String slug) {
-        return categoryRepository.findBySlug(slug)
-                .orElseThrow(() -> new IllegalArgumentException("Categoría no encontrada: " + slug));
+                        if (book == null) {
+                            throw new IllegalArgumentException(
+                                    "Libro no encontrado para la saga "
+                                            + seedSaga.nombre()
+                                            + ". ID libro: "
+                                            + bookId
+                            );
+                        }
+
+                        return book;
+                    })
+                    .toList();
+
+            Saga newSaga = Saga.builder()
+                    .slug(seedSaga.id())
+                    .name(seedSaga.nombre())
+                    .sagaIsbn(seedSaga.isbnSaga())
+                    .sagaPrice(seedSaga.precioSaga())
+                    .coverImage(seedSaga.portada())
+                    .description(seedSaga.descripcion())
+                    .books(sagaBooks)
+                    .active(true)
+                    .build();
+
+            sagaRepository.save(newSaga);
+        }
     }
 }

@@ -28,9 +28,9 @@ public class CatalogService {
         List<Book> books;
 
         if (category == null || category.isBlank()) {
-            books = bookRepository.findAllByActiveTrueOrderByIdAsc();
+            books = bookRepository.findAllByActiveTrueOrderByCatalogIdAsc();
         } else {
-            books = bookRepository.findAllByCategorySlugAndActiveTrueOrderByIdAsc(
+            books = bookRepository.findAllByCategorySlugAndActiveTrueOrderByCatalogIdAsc(
                     category.trim()
             );
         }
@@ -41,7 +41,7 @@ public class CatalogService {
     }
 
     public BookResponse getBookById(Long id) {
-        Book book = bookRepository.findByIdAndActiveTrue(id)
+        Book book = bookRepository.findByCatalogIdAndActiveTrue(id)
                 .orElseThrow(() -> new IllegalArgumentException("Libro no encontrado."));
 
         return toBookResponse(book);
@@ -77,7 +77,7 @@ public class CatalogService {
 
     private BookResponse toBookResponse(Book book) {
         return new BookResponse(
-                book.getId(),
+                book.getCatalogId(),
                 book.getTitle(),
                 book.getAuthor(),
                 book.getCategory().getSlug(),
@@ -94,7 +94,7 @@ public class CatalogService {
     private SagaResponse toSagaResponse(Saga saga) {
         List<Long> bookIds = saga.getBooks()
                 .stream()
-                .map(Book::getId)
+                .map(Book::getCatalogId)
                 .toList();
 
         return new SagaResponse(

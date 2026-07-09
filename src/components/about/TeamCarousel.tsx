@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
-import * as React from 'react';
 import { useState } from "react";
 
 const teamMembers = [
@@ -99,7 +98,7 @@ export function TeamCarousel() {
                 className="team-github-link"
             >
             <LinkedInIcon />
-                Conectémos
+                Conectemos
             </Link>
           </div>
         </article>

@@ -5,7 +5,6 @@ import Image from "next/image";
 import {
   BookOpen,
   CheckCircle2,
-  ChevronDown,
   Edit3,
   Heart,
   ImagePlus,
@@ -409,7 +408,6 @@ function handleAddWishlistItemToCart(item: WishlistItem) {
   const [profileForm, setProfileForm] = useState<UserProfile | null>(null);
 
   const { orders, totalOrders } = useOrders();
-  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!currentProfile) return;

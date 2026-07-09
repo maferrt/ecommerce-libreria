@@ -33,9 +33,19 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                         .requestMatchers("/api/health").permitAll()
+
                         .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+
+                        .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
+
+                        .requestMatchers(HttpMethod.GET, "/api/profile").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/profile").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/profile/address").authenticated()
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(

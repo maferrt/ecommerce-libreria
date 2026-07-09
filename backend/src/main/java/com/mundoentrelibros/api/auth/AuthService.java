@@ -1,6 +1,7 @@
 package com.mundoentrelibros.api.auth;
 
-import com.mundoentrelibros.api.auth.dto.AuthResponse;
+import com.mundoentrelibros.api.auth.dto.AuthTokenResponse;
+import com.mundoentrelibros.api.auth.dto.AuthUserResponse;
 import com.mundoentrelibros.api.auth.dto.LoginRequest;
 import com.mundoentrelibros.api.auth.dto.RegisterRequest;
 import com.mundoentrelibros.api.user.AppUser;
@@ -16,8 +17,9 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
-    public AuthResponse register(RegisterRequest request) {
+    public AuthTokenResponse register(RegisterRequest request) {
         String normalizedEmail = normalizeEmail(request.email());
 
         if (!request.password().equals(request.confirmPassword())) {
@@ -37,10 +39,10 @@ public class AuthService {
 
         AppUser savedUser = userRepository.save(newUser);
 
-        return toAuthResponse(savedUser);
+        return buildTokenResponse(savedUser);
     }
 
-    public AuthResponse login(LoginRequest request) {
+    public AuthTokenResponse login(LoginRequest request) {
         String normalizedEmail = normalizeEmail(request.email());
 
         AppUser user = userRepository.findByEmail(normalizedEmail)
@@ -55,19 +57,35 @@ public class AuthService {
             throw new IllegalArgumentException("Correo o contraseña incorrectos.");
         }
 
-        return toAuthResponse(user);
+        return buildTokenResponse(user);
     }
 
-    private String normalizeEmail(String email) {
-        return email.trim().toLowerCase();
+    public AuthUserResponse getCurrentUser(String email) {
+        AppUser user = userRepository.findByEmail(normalizeEmail(email))
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
+
+        return toAuthUserResponse(user);
     }
 
-    private AuthResponse toAuthResponse(AppUser user) {
-        return new AuthResponse(
+    private AuthTokenResponse buildTokenResponse(AppUser user) {
+        String token = jwtService.generateToken(user);
+
+        return new AuthTokenResponse(
+                token,
+                toAuthUserResponse(user)
+        );
+    }
+
+    private AuthUserResponse toAuthUserResponse(AppUser user) {
+        return new AuthUserResponse(
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
                 user.getRole()
         );
+    }
+
+    private String normalizeEmail(String email) {
+        return email.trim().toLowerCase();
     }
 }

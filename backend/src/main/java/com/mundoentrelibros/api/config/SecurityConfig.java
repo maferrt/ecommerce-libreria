@@ -53,6 +53,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/sagas").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/sagas/**").permitAll()
 
+                        .requestMatchers(HttpMethod.GET, "/api/wishlist").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/wishlist/books/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/wishlist/sagas/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/wishlist/items/**").authenticated()
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(

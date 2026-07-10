@@ -1,0 +1,67 @@
+services:
+  mel-mysql:
+    image: mysql:8.4
+    container_name: mel-mysql
+    restart: unless-stopped
+
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+
+    ports:
+      - "3306:3306"
+
+    volumes:
+      - mel_mysql_data:/var/lib/mysql
+
+    networks:
+      - mel-network
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mel-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    container_name: mel-api
+    restart: unless-stopped
+
+    depends_on:
+      mel-mysql:
+        condition: service_healthy
+
+    environment:
+      PORT: 8080
+
+      SPRING_DATASOURCE_URL: jdbc:mysql://mel-mysql:3306/${MYSQL_DATABASE}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: false
+      SPRING_JPA_FORMAT_SQL: false
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS}
+
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
+
+    ports:
+      - "8080:8080"
+
+    networks:
+      - mel-network
+
+volumes:
+  mel_mysql_data:
+
+networks:
+  mel-network:
+    driver: bridge

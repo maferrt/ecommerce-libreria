@@ -95,7 +95,7 @@ export function CartDrawer() {
                       <div className={styles.quantityControl}>
                         <button
                           type="button"
-                          onClick={() => decrementItem(item.id)}
+                          onClick={() => void decrementItem(item.id)}
                           aria-label="Reducir cantidad"
                         >
                           <Minus size={15} />
@@ -105,7 +105,7 @@ export function CartDrawer() {
 
                         <button
                           type="button"
-                          onClick={() => incrementItem(item.id)}
+                          onClick={() => void incrementItem(item.id)}
                           aria-label="Aumentar cantidad"
                         >
                           <Plus size={15} />
@@ -115,7 +115,7 @@ export function CartDrawer() {
                       <button
                         type="button"
                         className={styles.removeButton}
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => void removeItem(item.id)}
                         aria-label="Eliminar producto"
                       >
                         <Trash2 size={15} />
@@ -149,7 +149,7 @@ export function CartDrawer() {
               <button
                 type="button"
                 className={styles.clearButton}
-                onClick={clearCart}
+                onClick={() => void clearCart()}
               >
                 Vaciar carrito
               </button>

@@ -11,7 +11,7 @@ const teamMembers = [
     shortName: "Mafer",
     role: "Desarrolladora Full Stack",
     image: "/images/team/Maria_Fernanda_Rodriguez_Trinidad.png",
-    linkedin: "https://www.linkedin.com/in/mar%C3%ADa-fernanda-rodr%C3%ADguez-trinidad-926346396/",
+    linkedin: "https://www.linkedin.com/in/mariafernanda-rodriguez-trinidad/",
     description:
       "Participa en el diseño visual, estructura frontend, experiencia de usuario, reconstrucción del proyecto en Next.js e integración del funcionamiento lógico con Java y Spring Boot.",
   },

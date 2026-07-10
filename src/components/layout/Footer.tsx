@@ -13,7 +13,7 @@ const teamSprites = [
   {
     name: "Mafer",
     role: "Desarrolladora",
-    github: "https://github.com/mafernandarodrigueztdev-byte",
+    github: "https://github.com/maferrt",
     spriteClass: "pixel-mafer",
   },
   {

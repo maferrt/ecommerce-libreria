@@ -10,7 +10,13 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Swal from "sweetalert2";
 import { ClientPortal } from "@/components/ui/ClientPortal";
 import { useAccount } from "@/context/AccountContext";
@@ -19,8 +25,15 @@ import {
   type WishlistToggleResult,
   useWishlist,
 } from "@/context/WishlistContext";
-import { catalogData, categoryLabels, categoryOrder } from "@/data/catalog";
-import type { Book, Saga } from "@/types/book";
+import {
+  categoryLabels as fallbackCategoryLabels,
+  categoryOrder as fallbackCategoryOrder,
+} from "@/data/catalog";
+import {
+  getCatalogRequest,
+  getCategoriesRequest,
+} from "@/lib/catalog-api";
+import type { Book, BookCategory, CatalogData, Saga } from "@/types/book";
 import styles from "./CatalogClient.module.css";
 
 const currencyFormatter = new Intl.NumberFormat("es-MX", {
@@ -32,6 +45,7 @@ export function CatalogClient() {
   const router = useRouter();
   const { isAuthenticated } = useAccount();
   const { addBook, addSaga } = useCart();
+
   const {
     toggleBook,
     toggleSaga,
@@ -43,6 +57,69 @@ export function CatalogClient() {
   const [selectedSaga, setSelectedSaga] = useState<Saga | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
+  const [catalogData, setCatalogData] = useState<CatalogData>({
+    libros: [],
+    sagas: [],
+  });
+
+  const [categoryLabels, setCategoryLabels] = useState<Record<string, string>>({
+    ...fallbackCategoryLabels,
+  });
+
+  const [categoryOrder, setCategoryOrder] = useState<string[]>([
+    ...fallbackCategoryOrder,
+  ]);
+
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
+  const [catalogError, setCatalogError] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCatalog() {
+      try {
+        setIsLoadingCatalog(true);
+        setCatalogError("");
+
+        const [catalogResponse, categoriesResponse] = await Promise.all([
+          getCatalogRequest(),
+          getCategoriesRequest(),
+        ]);
+
+        if (!isMounted) return;
+
+        const nextCategoryLabels = categoriesResponse.reduce<
+          Record<string, string>
+        >((labels, category) => {
+          labels[category.id] = category.label;
+          return labels;
+        }, {});
+
+        setCatalogData(catalogResponse);
+        setCategoryLabels(nextCategoryLabels);
+        setCategoryOrder(categoriesResponse.map((category) => category.id));
+      } catch (error) {
+        if (!isMounted) return;
+
+        setCatalogError(
+          error instanceof Error
+            ? error.message
+            : "No se pudo cargar el catálogo.",
+        );
+      } finally {
+        if (isMounted) {
+          setIsLoadingCatalog(false);
+        }
+      }
+    }
+
+    void loadCatalog();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const filteredBooks = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
@@ -53,10 +130,11 @@ export function CatalogClient() {
         book.titulo.toLowerCase().includes(normalizedSearch) ||
         book.autor.toLowerCase().includes(normalizedSearch) ||
         book.editorial.toLowerCase().includes(normalizedSearch) ||
-        book.categoria.toLowerCase().includes(normalizedSearch)
+        book.categoria.toLowerCase().includes(normalizedSearch) ||
+        book.saga?.toLowerCase().includes(normalizedSearch)
       );
     });
-  }, [searchTerm]);
+  }, [catalogData.libros, searchTerm]);
 
   const booksByCategory = useMemo(() => {
     return filteredBooks.reduce<Record<string, Book[]>>((acc, book) => {
@@ -80,8 +158,8 @@ export function CatalogClient() {
         icon: "info",
         title: "Inicia sesión",
         text: "Para guardar favoritos necesitas iniciar sesión o crear una cuenta.",
-        showCancelButton: true,
         confirmButtonText: "Ir a mi cuenta",
+        showCancelButton: true,
         cancelButtonText: "Cancelar",
         confirmButtonColor: "#521f12",
         cancelButtonColor: "#a0653d",
@@ -96,13 +174,76 @@ export function CatalogClient() {
       return;
     }
 
-    void Swal.fire({
+    await Swal.fire({
       toast: true,
       position: "top-end",
       icon: result.saved ? "success" : "info",
       title: result.message,
       showConfirmButton: false,
-      timer: 2200,
+      timer: 1600,
+      timerProgressBar: true,
+      background: "#f6ebd9",
+      color: "#521f12",
+    });
+  }
+
+  async function requireLoginForCart() {
+    if (isAuthenticated) return true;
+
+    const result = await Swal.fire({
+      icon: "info",
+      title: "Inicia sesión",
+      text: "Para agregar productos al carrito necesitas iniciar sesión.",
+      confirmButtonText: "Ir a mi cuenta",
+      showCancelButton: true,
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#521f12",
+      cancelButtonColor: "#a0653d",
+      background: "#f6ebd9",
+      color: "#521f12",
+    });
+
+    if (result.isConfirmed) {
+      router.push("/cuenta");
+    }
+
+    return false;
+  }
+
+  async function handleAddBookToCart(book: Book) {
+    const canAddToCart = await requireLoginForCart();
+
+    if (!canAddToCart) return;
+
+    addBook(book);
+
+    await Swal.fire({
+      toast: true,
+      position: "top-end",
+      icon: "success",
+      title: "Libro agregado al carrito",
+      showConfirmButton: false,
+      timer: 1500,
+      timerProgressBar: true,
+      background: "#f6ebd9",
+      color: "#521f12",
+    });
+  }
+
+  async function handleAddSagaToCart(saga: Saga) {
+    const canAddToCart = await requireLoginForCart();
+
+    if (!canAddToCart) return;
+
+    addSaga(saga, saga.libros.length);
+
+    await Swal.fire({
+      toast: true,
+      position: "top-end",
+      icon: "success",
+      title: "Saga agregada al carrito",
+      showConfirmButton: false,
+      timer: 1500,
       timerProgressBar: true,
       background: "#f6ebd9",
       color: "#521f12",
@@ -112,98 +253,125 @@ export function CatalogClient() {
   return (
     <main className={styles.page}>
       <header className={styles.hero}>
-        <span className={styles.eyebrow}>Catálogo</span>
+        <span>Catálogo literario</span>
 
-        <h1>Explora nuestro catálogo</h1>
+        <h1>Encuentra tu próxima lectura favorita</h1>
 
         <p>
-          Descubre libros por género, sagas destacadas, autores y lecturas para
-          tu próxima aventura literaria.
+          Explora libros por categoría, guarda tus favoritos y arma tu carrito
+          con historias para todos los gustos.
         </p>
 
         <div className={styles.searchBox}>
           <Search size={18} />
+
           <input
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Buscar por título, autor, editorial o categoría..."
+            placeholder="Buscar por título, autor, editorial, saga o categoría..."
           />
         </div>
       </header>
 
-      <section className={styles.categorySection}>
-        <h2>📚 Sagas</h2>
+      {isLoadingCatalog && (
+        <section className={styles.categorySection}>
+          <h2>Cargando catálogo...</h2>
+          <p>Estamos trayendo los libros desde el backend.</p>
+        </section>
+      )}
 
-        <CatalogCarousel>
-          {catalogData.sagas.map((saga) => (
-            <article key={saga.id} className={styles.bookCard}>
-              <button
-                type="button"
-                className={
-                  isSagaSaved(saga.id)
-                    ? `${styles.wishlistButton} ${styles.wishlistButtonActive}`
-                    : styles.wishlistButton
-                }
-                onClick={() => void handleWishlistResult(toggleSaga(saga))}
-                aria-label={
-                  isSagaSaved(saga.id)
-                    ? `Quitar ${saga.nombre} de wishlist`
-                    : `Guardar ${saga.nombre} en wishlist`
-                }
-              >
-                <Heart size={18} fill={isSagaSaved(saga.id) ? "currentColor" : "none"} />
-              </button>
+      {catalogError && (
+        <section className={styles.categorySection}>
+          <h2>No se pudo cargar el catálogo</h2>
+          <p>{catalogError}</p>
+        </section>
+      )}
 
-              <div className={styles.coverWrapper}>
-                <Image
-                  src={saga.portada}
-                  alt={saga.nombre}
-                  width={260}
-                  height={380}
-                  className={styles.cover}
-                />
-              </div>
-
-              <div className={styles.cardBody}>
-                <h3>{saga.nombre}</h3>
-                <p>{saga.libros.length} libros</p>
-
-                <strong>{currencyFormatter.format(saga.precioSaga)}</strong>
-
-                <button type="button" onClick={() => setSelectedSaga(saga)}>
-                  Ver más
-                </button>
-              </div>
-            </article>
-          ))}
-        </CatalogCarousel>
-      </section>
-
-      {categoryOrder.map((category) => {
-        const books = booksByCategory[category] ?? [];
-
-        if (books.length === 0) return null;
-
-        return (
-          <section key={category} className={styles.categorySection}>
-            <h2>{categoryLabels[category]}</h2>
+      {!isLoadingCatalog && !catalogError && (
+        <>
+          <section className={styles.categorySection}>
+            <h2>📚 Sagas</h2>
 
             <CatalogCarousel>
-              {books.map((book) => (
-                <BookCard
-                  key={book.id}
-                  book={book}
-                  isSaved={isBookSaved(book.id)}
-                  onToggleWishlist={() =>
-                    void handleWishlistResult(toggleBook(book))
-                  }
-                  onOpen={() => setSelectedBook(book)}
-                />
+              {catalogData.sagas.map((saga) => (
+                <article key={saga.id} className={styles.bookCard}>
+                  <button
+                    type="button"
+                    className={
+                      isSagaSaved(saga.id)
+                        ? `${styles.wishlistButton} ${styles.wishlistButtonActive}`
+                        : styles.wishlistButton
+                    }
+                    onClick={() => void handleWishlistResult(toggleSaga(saga))}
+                    aria-label={
+                      isSagaSaved(saga.id)
+                        ? `Quitar ${saga.nombre} de wishlist`
+                        : `Guardar ${saga.nombre} en wishlist`
+                    }
+                  >
+                    <Heart
+                      size={18}
+                      fill={isSagaSaved(saga.id) ? "currentColor" : "none"}
+                    />
+                  </button>
+
+                  <div className={styles.coverWrapper}>
+                    <Image
+                      src={saga.portada}
+                      alt={saga.nombre}
+                      width={260}
+                      height={380}
+                      className={styles.cover}
+                    />
+                  </div>
+
+                  <div className={styles.cardBody}>
+                    <h3>{saga.nombre}</h3>
+
+                    <p>{saga.libros.length} libros</p>
+
+                    <strong>{currencyFormatter.format(saga.precioSaga)}</strong>
+
+                    <button type="button" onClick={() => setSelectedSaga(saga)}>
+                      Ver más
+                    </button>
+                  </div>
+                </article>
               ))}
             </CatalogCarousel>
           </section>
-        );
-      })}
+
+          {categoryOrder.map((category) => {
+            const books = booksByCategory[category] ?? [];
+
+            if (books.length === 0) return null;
+
+            return (
+              <section key={category} className={styles.categorySection}>
+                <h2>
+                  {categoryLabels[category] ??
+                    fallbackCategoryLabels[category as BookCategory] ??
+                    category}
+                </h2>
+
+                <CatalogCarousel>
+                  {books.map((book) => (
+                    <BookCard
+                      key={book.id}
+                      book={book}
+                      isSaved={isBookSaved(book.id)}
+                      onToggleWishlist={() =>
+                        void handleWishlistResult(toggleBook(book))
+                      }
+                      onOpen={() => setSelectedBook(book)}
+                    />
+                  ))}
+                </CatalogCarousel>
+              </section>
+            );
+          })}
+        </>
+      )}
 
       {selectedBook && (
         <ClientPortal>
@@ -211,7 +379,7 @@ export function CatalogClient() {
             book={selectedBook}
             isSaved={isBookSaved(selectedBook.id)}
             onClose={() => setSelectedBook(null)}
-            onAddToCart={() => addBook(selectedBook)}
+            onAddToCart={() => void handleAddBookToCart(selectedBook)}
             onToggleWishlist={() =>
               void handleWishlistResult(toggleBook(selectedBook))
             }
@@ -230,7 +398,7 @@ export function CatalogClient() {
               setSelectedSaga(null);
               setSelectedBook(book);
             }}
-            onAddToCart={() => addSaga(selectedSaga, selectedSaga.libros.length)}
+            onAddToCart={() => void handleAddSagaToCart(selectedSaga)}
             onToggleWishlist={() =>
               void handleWishlistResult(toggleSaga(selectedSaga))
             }
@@ -543,7 +711,7 @@ function SagaModal({
             onClick={onToggleWishlist}
           >
             <Heart size={17} fill={isSaved ? "currentColor" : "none"} />
-            {isSaved ? "Quitar de wishlist" : "Guardar paquete en wishlist"}
+            {isSaved ? "Quitar de wishlist" : "Guardar en wishlist"}
           </button>
         </div>
       </article>

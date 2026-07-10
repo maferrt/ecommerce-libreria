@@ -11,36 +11,47 @@ import {
 import type {
   AccountLoginInput,
   AccountRegisterInput,
-  AccountSession,
+  ReaderStatus,
   RegisteredUser,
+  UserAddress,
   UserProfile,
 } from "@/types/account";
+import {
+  clearAuthSession,
+  getAuthToken,
+  getStoredAuthUser,
+  saveAuthSession,
+} from "@/lib/auth-storage";
+import { getCurrentUserRequest, loginRequest, registerRequest } from "@/lib/auth-api";
+import { getProfileRequest, updateProfileRequest } from "@/lib/profile-api";
+import type { ApiAuthUser, ApiProfile, ApiProfileUpdateRequest } from "@/lib/api-types";
 
-const USERS_STORAGE_KEY = "mel_registered_users";
-const SESSION_STORAGE_KEY = "mel_account_session";
-const PROFILES_STORAGE_KEY = "mel_user_profiles";
 const FORUM_MEMBERSHIPS_STORAGE_KEY = "mel_forum_memberships";
+
+type AccountActionResult = {
+  ok: boolean;
+  message: string;
+};
 
 type AccountContextValue = {
   users: RegisteredUser[];
   currentUser: RegisteredUser | null;
   currentProfile: UserProfile | null;
   isAuthenticated: boolean;
+  isLoadingAccount: boolean;
   totalForumPoints: number;
-  registerUser: (input: AccountRegisterInput) => {
-    ok: boolean;
-    message: string;
-  };
-  loginUser: (input: AccountLoginInput) => {
-    ok: boolean;
-    message: string;
-  };
+  registerUser: (input: AccountRegisterInput) => Promise<AccountActionResult>;
+  loginUser: (input: AccountLoginInput) => Promise<AccountActionResult>;
   logoutUser: () => void;
-  updateProfile: (profile: UserProfile) => void;
+  updateProfile: (profile: UserProfile) => Promise<AccountActionResult>;
   refreshAccountData: () => void;
 };
 
 const AccountContext = createContext<AccountContextValue | null>(null);
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
 
 function safeReadJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -56,142 +67,155 @@ function safeReadJson<T>(key: string, fallback: T): T {
   }
 }
 
-function saveJson<T>(key: string, value: T) {
-  window.localStorage.setItem(key, JSON.stringify(value));
+function toRegisteredUser(user: ApiAuthUser): RegisteredUser {
+  return {
+    id: String(user.id),
+    name: user.name,
+    email: user.email,
+    password: "",
+    createdAt: new Date().toISOString(),
+  };
 }
 
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
-}
+function normalizeReaderStatus(value: string): ReaderStatus {
+  const validStatuses: ReaderStatus[] = [
+    "Leyendo ahora",
+    "Buscando nueva lectura",
+    "En pausa lectora",
+    "Fan de sagas",
+    "Modo terror activado",
+    "Releyendo favoritos",
+  ];
 
-function createId(prefix: string) {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}-${crypto.randomUUID()}`;
+  if (validStatuses.includes(value as ReaderStatus)) {
+    return value as ReaderStatus;
   }
 
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return "Buscando nueva lectura";
 }
 
-function createDefaultProfile(user: RegisteredUser): UserProfile {
+function toUserAddress(address: ApiProfile["address"]): UserAddress {
   return {
-    userId: user.id,
-    displayName: user.name,
-    avatar: null,
-    currentReading: "",
-    readerStatus: "Buscando nueva lectura",
-    bio: "Lector/a de Mundo Entre Libros.",
-    favoriteGenre: "Novela Juvenil",
+    street: address?.street ?? "",
+    exteriorNumber: address?.exteriorNumber ?? "",
+    interiorNumber: address?.interiorNumber ?? "",
+    neighborhood: address?.neighborhood ?? "",
+    city: address?.city ?? "",
+    state: address?.state ?? "",
+    zipCode: address?.zipCode ?? "",
+    country: address?.country ?? "México",
+    references: address?.references ?? "",
+  };
+}
+
+function toUserProfile(profile: ApiProfile): UserProfile {
+  return {
+    userId: String(profile.userId),
+    displayName: profile.displayName,
+    avatar: profile.avatar,
+    currentReading: profile.currentReading ?? "",
+    readerStatus: normalizeReaderStatus(profile.readerStatus),
+    bio: profile.bio ?? "",
+    favoriteGenre: profile.favoriteGenre ?? "Novela Juvenil",
+    address: toUserAddress(profile.address),
+  };
+}
+
+function toApiProfileUpdateRequest(profile: UserProfile): ApiProfileUpdateRequest {
+  return {
+    displayName: profile.displayName,
+    avatar: profile.avatar,
+    currentReading: profile.currentReading,
+    readerStatus: profile.readerStatus,
+    bio: profile.bio,
+    favoriteGenre: profile.favoriteGenre,
     address: {
-      street: "",
-      exteriorNumber: "",
-      interiorNumber: "",
-      neighborhood: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      country: "México",
-      references: "",
+      street: profile.address.street,
+      exteriorNumber: profile.address.exteriorNumber,
+      interiorNumber: profile.address.interiorNumber,
+      neighborhood: profile.address.neighborhood,
+      city: profile.address.city,
+      state: profile.address.state,
+      zipCode: profile.address.zipCode,
+      country: profile.address.country,
+      references: profile.address.references,
     },
   };
 }
 
-function getStoredUsers() {
-  return safeReadJson<RegisteredUser[]>(USERS_STORAGE_KEY, []);
-}
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
 
-function getStoredSession() {
-  return safeReadJson<AccountSession | null>(SESSION_STORAGE_KEY, null);
-}
-
-function getStoredProfiles() {
-  return safeReadJson<Record<string, UserProfile>>(PROFILES_STORAGE_KEY, {});
-}
-
-function getTotalForumPointsByUser(userId: string) {
-  const memberships = safeReadJson<
-    Record<string, Record<string, { points: number }>>
-  >(FORUM_MEMBERSHIPS_STORAGE_KEY, {});
-
-  const userMemberships = memberships[userId];
-
-  if (!userMemberships) return 0;
-
-  return Object.values(userMemberships).reduce(
-    (total, membership) => total + membership.points,
-    0,
-  );
+  return "No se pudo conectar con el servidor.";
 }
 
 export function AccountProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<RegisteredUser[]>([]);
-  const [session, setSession] = useState<AccountSession | null>(null);
-  const [profiles, setProfiles] = useState<Record<string, UserProfile>>({});
-  const [hasLoadedAccount, setHasLoadedAccount] = useState(false);
+  const [currentUser, setCurrentUser] = useState<RegisteredUser | null>(null);
+  const [currentProfile, setCurrentProfile] = useState<UserProfile | null>(null);
+  const [isLoadingAccount, setIsLoadingAccount] = useState(true);
   const [accountRefreshKey, setAccountRefreshKey] = useState(0);
 
   useEffect(() => {
-    setUsers(getStoredUsers());
-    setSession(getStoredSession());
-    setProfiles(getStoredProfiles());
-    setHasLoadedAccount(true);
-  }, []);
+    async function hydrateSession() {
+      const token = getAuthToken();
+      const storedUser = getStoredAuthUser();
 
-  useEffect(() => {
-    if (!hasLoadedAccount) return;
+      if (!token || !storedUser) {
+        setIsLoadingAccount(false);
+        return;
+      }
 
-    saveJson(USERS_STORAGE_KEY, users);
-  }, [users, hasLoadedAccount]);
+      try {
+        const apiUser = await getCurrentUserRequest();
+        const apiProfile = await getProfileRequest();
 
-  useEffect(() => {
-    if (!hasLoadedAccount) return;
+        const nextUser = toRegisteredUser(apiUser);
+        const nextProfile = toUserProfile(apiProfile);
 
-    saveJson(PROFILES_STORAGE_KEY, profiles);
-  }, [profiles, hasLoadedAccount]);
-
-  useEffect(() => {
-    if (!hasLoadedAccount) return;
-
-    if (!session) {
-      window.localStorage.removeItem(SESSION_STORAGE_KEY);
-      return;
+        setCurrentUser(nextUser);
+        setUsers([nextUser]);
+        setCurrentProfile(nextProfile);
+      } catch {
+        clearAuthSession();
+        setCurrentUser(null);
+        setCurrentProfile(null);
+        setUsers([]);
+      } finally {
+        setIsLoadingAccount(false);
+      }
     }
 
-    saveJson(SESSION_STORAGE_KEY, session);
-  }, [session, hasLoadedAccount]);
-
-  const currentUser = useMemo(() => {
-    if (!session) return null;
-
-    return users.find((user) => user.id === session.userId) ?? null;
-  }, [users, session]);
-
-  const currentProfile = useMemo(() => {
-    if (!currentUser) return null;
-
-    const defaultProfile = createDefaultProfile(currentUser);
-    const storedProfile = profiles[currentUser.id];
-
-    if (!storedProfile) return defaultProfile;
-
-    return {
-      ...defaultProfile,
-      ...storedProfile,
-      address: {
-        ...defaultProfile.address,
-        ...storedProfile.address,
-      },
-    };
-  }, [currentUser, profiles]);
+    void hydrateSession();
+  }, [accountRefreshKey]);
 
   const totalForumPoints = useMemo(() => {
     if (!currentUser) return 0;
 
-    accountRefreshKey;
+    const memberships = safeReadJson<
+      Record<string, Record<string, { points?: number }>>
+    >(FORUM_MEMBERSHIPS_STORAGE_KEY, {});
 
-    return getTotalForumPointsByUser(currentUser.id);
+    return Object.values(memberships[currentUser.id] ?? {}).reduce(
+      (total, membership) => total + Number(membership.points ?? 0),
+      0,
+    );
   }, [currentUser, accountRefreshKey]);
 
-  function registerUser(input: AccountRegisterInput) {
+  async function loadProfile() {
+    const apiProfile = await getProfileRequest();
+    const nextProfile = toUserProfile(apiProfile);
+
+    setCurrentProfile(nextProfile);
+
+    return nextProfile;
+  }
+
+  async function registerUser(
+    input: AccountRegisterInput,
+  ): Promise<AccountActionResult> {
     const cleanName = input.name.trim();
     const cleanEmail = normalizeEmail(input.email);
     const cleanPassword = input.password.trim();
@@ -200,21 +224,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     if (!cleanName || !cleanEmail || !cleanPassword || !cleanConfirmPassword) {
       return {
         ok: false,
-        message: "Completa todos los campos para registrarte.",
-      };
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      return {
-        ok: false,
-        message: "Escribe un correo electrónico válido.",
-      };
-    }
-
-    if (cleanPassword.length < 6) {
-      return {
-        ok: false,
-        message: "La contraseña debe tener al menos 6 caracteres.",
+        message: "Completa todos los campos para crear tu cuenta.",
       };
     }
 
@@ -225,44 +235,36 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    const emailAlreadyExists = users.some(
-      (user) => normalizeEmail(user.email) === cleanEmail,
-    );
+    try {
+      const response = await registerRequest({
+        name: cleanName,
+        email: cleanEmail,
+        password: cleanPassword,
+        confirmPassword: cleanConfirmPassword,
+      });
 
-    if (emailAlreadyExists) {
+      saveAuthSession(response.token, response.user);
+
+      const nextUser = toRegisteredUser(response.user);
+
+      setCurrentUser(nextUser);
+      setUsers([nextUser]);
+
+      await loadProfile();
+
+      return {
+        ok: true,
+        message: "Cuenta creada correctamente.",
+      };
+    } catch (error) {
       return {
         ok: false,
-        message: "Ya existe una cuenta registrada con ese correo.",
+        message: getErrorMessage(error),
       };
     }
-
-    const newUser: RegisteredUser = {
-      id: createId("account"),
-      name: cleanName,
-      email: cleanEmail,
-      password: cleanPassword,
-      createdAt: new Date().toISOString(),
-    };
-
-    setUsers((currentUsers) => [...currentUsers, newUser]);
-
-    setProfiles((currentProfiles) => ({
-      ...currentProfiles,
-      [newUser.id]: createDefaultProfile(newUser),
-    }));
-
-    setSession({
-      userId: newUser.id,
-      email: newUser.email,
-    });
-
-    return {
-      ok: true,
-      message: "Cuenta creada correctamente.",
-    };
   }
 
-  function loginUser(input: AccountLoginInput) {
+  async function loginUser(input: AccountLoginInput): Promise<AccountActionResult> {
     const cleanEmail = normalizeEmail(input.email);
     const cleanPassword = input.password.trim();
 
@@ -273,48 +275,60 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    const foundUser = users.find(
-      (user) =>
-        normalizeEmail(user.email) === cleanEmail &&
-        user.password === cleanPassword,
-    );
+    try {
+      const response = await loginRequest({
+        email: cleanEmail,
+        password: cleanPassword,
+      });
 
-    if (!foundUser) {
+      saveAuthSession(response.token, response.user);
+
+      const nextUser = toRegisteredUser(response.user);
+
+      setCurrentUser(nextUser);
+      setUsers([nextUser]);
+
+      await loadProfile();
+
+      return {
+        ok: true,
+        message: "Sesión iniciada correctamente.",
+      };
+    } catch (error) {
       return {
         ok: false,
-        message: "Correo o contraseña incorrectos.",
+        message: getErrorMessage(error),
       };
     }
-
-    setSession({
-      userId: foundUser.id,
-      email: foundUser.email,
-    });
-
-    setProfiles((currentProfiles) => {
-      if (currentProfiles[foundUser.id]) return currentProfiles;
-
-      return {
-        ...currentProfiles,
-        [foundUser.id]: createDefaultProfile(foundUser),
-      };
-    });
-
-    return {
-      ok: true,
-      message: "Sesión iniciada correctamente.",
-    };
   }
 
   function logoutUser() {
-    setSession(null);
+    clearAuthSession();
+    setCurrentUser(null);
+    setCurrentProfile(null);
+    setUsers([]);
   }
 
-  function updateProfile(profile: UserProfile) {
-    setProfiles((currentProfiles) => ({
-      ...currentProfiles,
-      [profile.userId]: profile,
-    }));
+  async function updateProfile(
+    profile: UserProfile,
+  ): Promise<AccountActionResult> {
+    try {
+      const apiProfile = await updateProfileRequest(
+        toApiProfileUpdateRequest(profile),
+      );
+
+      setCurrentProfile(toUserProfile(apiProfile));
+
+      return {
+        ok: true,
+        message: "Tus datos de perfil se guardaron correctamente.",
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        message: getErrorMessage(error),
+      };
+    }
   }
 
   function refreshAccountData() {
@@ -326,6 +340,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     currentUser,
     currentProfile,
     isAuthenticated: Boolean(currentUser),
+    isLoadingAccount,
     totalForumPoints,
     registerUser,
     loginUser,

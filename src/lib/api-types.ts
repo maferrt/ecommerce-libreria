@@ -49,3 +49,23 @@ export type ApiProfile = {
   favoriteGenre: string;
   address: ApiAddress;
 };
+
+export type ApiProfileUpdateRequest = {
+  displayName: string;
+  avatar: string | null;
+  currentReading: string;
+  readerStatus: string;
+  bio: string;
+  favoriteGenre: string;
+  address: {
+    street: string;
+    exteriorNumber: string;
+    interiorNumber: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+    references: string;
+  };
+};

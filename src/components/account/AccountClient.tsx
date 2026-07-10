@@ -103,7 +103,7 @@ function AuthPanel() {
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const result = loginUser(loginForm);
+    const result = await loginUser(loginForm);
 
     if (!result.ok) {
       await Swal.fire({
@@ -133,7 +133,7 @@ function AuthPanel() {
   async function handleRegister(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const result = registerUser(registerForm);
+    const result = await registerUser(registerForm);
 
     if (!result.ok) {
       await Swal.fire({
@@ -176,12 +176,6 @@ function AuthPanel() {
             consultar pedidos y acumular puntos dentro de los foros.
           </p>
         </div>
-
-        <div className={styles.authNote}>
-          <UserRound size={38} />
-          <strong>Registro local para demo de frontend</strong>
-          <span>Listo para conectar backend después</span>
-        </div>
       </section>
 
       <section className={styles.authLayout}>
@@ -206,11 +200,6 @@ function AuthPanel() {
               Consultar puntos de foros
             </li>
           </ul>
-
-          <p>
-            Por ahora los datos se guardan en localStorage. Cuando exista backend,
-            este flujo puede migrarse a base de datos y JWT.
-          </p>
         </aside>
 
         <section className={styles.authCard}>
@@ -235,7 +224,7 @@ function AuthPanel() {
           {mode === "login" ? (
             <form className={styles.form} onSubmit={handleLogin}>
               <div className={styles.formHeader}>
-                <h2>Iniciar sesión</h2>
+                <h2>Iniciar sesión <UserRound size={32} /> </h2>
                 <p>Entra con el correo y contraseña que registraste.</p>
               </div>
 
@@ -437,13 +426,27 @@ function handleAddWishlistItemToCart(item: WishlistItem) {
       return;
     }
 
-    updateProfile(profileForm);
+    const result = await updateProfile(profileForm);
+
+    if (!result.ok) {
+      await Swal.fire({
+        icon: "error",
+        title: "No se pudo actualizar",
+        text: result.message,
+        confirmButtonColor: "#521f12",
+        background: "#f6ebd9",
+        color: "#521f12",
+      });
+
+      return;
+    }
+
     setIsEditingProfile(false);
 
     await Swal.fire({
       icon: "success",
       title: "Perfil actualizado",
-      text: "Tus datos de perfil se guardaron correctamente.",
+      text: result.message,
       confirmButtonColor: "#521f12",
       background: "#f6ebd9",
       color: "#521f12",

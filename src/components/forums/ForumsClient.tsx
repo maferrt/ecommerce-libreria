@@ -54,8 +54,6 @@ import type {
 } from "@/lib/api-types";
 import styles from "./ForumsClient.module.css";
 
-const FORUM_MEMBERSHIPS_STORAGE_KEY = "mel_forum_memberships";
-
 type ForumUser = {
   id: string;
   username: string;
@@ -117,35 +115,6 @@ function getFallbackForumCards(): ForumCardData[] {
     points: 0,
     postCount: 0,
   }));
-}
-
-function syncForumPointsForAccount(userId: string, forums: ApiForumResponse[]) {
-  if (typeof window === "undefined") return;
-
-  const userMemberships = forums.reduce<
-    Record<string, { forumId: string; joinedAt: string; points: number }>
-  >((memberships, forum) => {
-    if (!forum.subscribed) return memberships;
-
-    memberships[forum.slug] = {
-      forumId: forum.slug,
-      joinedAt: new Date().toISOString(),
-      points: forum.points,
-    };
-
-    return memberships;
-  }, {});
-
-  const storedMemberships = JSON.parse(
-    window.localStorage.getItem(FORUM_MEMBERSHIPS_STORAGE_KEY) ?? "{}",
-  ) as Record<string, Record<string, { forumId: string; joinedAt: string; points: number }>>;
-
-  storedMemberships[userId] = userMemberships;
-
-  window.localStorage.setItem(
-    FORUM_MEMBERSHIPS_STORAGE_KEY,
-    JSON.stringify(storedMemberships),
-  );
 }
 
 function sanitizeRichHtml(html: string) {
@@ -296,6 +265,7 @@ export function ForumsClient() {
     currentProfile,
     isAuthenticated,
     logoutUser,
+    refreshAccountData,
   } = useAccount();
 
   const currentUser = useMemo<ForumUser | null>(() => {
@@ -331,7 +301,6 @@ export function ForumsClient() {
       const response = await getForumsRequest();
 
       setForums(response);
-      syncForumPointsForAccount(currentUser.id, response);
     } catch (error) {
       setForumsError(getErrorMessage(error));
     } finally {
@@ -439,6 +408,8 @@ export function ForumsClient() {
     if (selectedForumSlug) {
       await loadSelectedForumPosts(selectedForumSlug);
     }
+
+    refreshAccountData();
   }
 
   async function handleSubscribe() {

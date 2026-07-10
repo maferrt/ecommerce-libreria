@@ -5,7 +5,6 @@ import {
   type ReactNode,
   useContext,
   useEffect,
-  useMemo,
   useState,
 } from "react";
 import type {
@@ -24,9 +23,8 @@ import {
 } from "@/lib/auth-storage";
 import { getCurrentUserRequest, loginRequest, registerRequest } from "@/lib/auth-api";
 import { getProfileRequest, updateProfileRequest } from "@/lib/profile-api";
+import { getForumsRequest } from "@/lib/forum-api";
 import type { ApiAuthUser, ApiProfile, ApiProfileUpdateRequest } from "@/lib/api-types";
-
-const FORUM_MEMBERSHIPS_STORAGE_KEY = "mel_forum_memberships";
 
 type AccountActionResult = {
   ok: boolean;
@@ -51,20 +49,6 @@ const AccountContext = createContext<AccountContextValue | null>(null);
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
-}
-
-function safeReadJson<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-
-  const rawValue = window.localStorage.getItem(key);
-
-  if (!rawValue) return fallback;
-
-  try {
-    return JSON.parse(rawValue) as T;
-  } catch {
-    return fallback;
-  }
 }
 
 function toRegisteredUser(user: ApiAuthUser): RegisteredUser {
@@ -151,12 +135,25 @@ function getErrorMessage(error: unknown) {
   return "No se pudo conectar con el servidor.";
 }
 
+async function getTotalForumPointsRequest() {
+  try {
+    const forums = await getForumsRequest();
+
+    return forums.reduce((total, forum) => {
+      return total + Number(forum.points ?? 0);
+    }, 0);
+  } catch {
+    return 0;
+  }
+}
+
 export function AccountProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<RegisteredUser[]>([]);
   const [currentUser, setCurrentUser] = useState<RegisteredUser | null>(null);
   const [currentProfile, setCurrentProfile] = useState<UserProfile | null>(null);
   const [isLoadingAccount, setIsLoadingAccount] = useState(true);
   const [accountRefreshKey, setAccountRefreshKey] = useState(0);
+  const [totalForumPoints, setTotalForumPoints] = useState(0);
 
   useEffect(() => {
     async function hydrateSession() {
@@ -171,6 +168,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       try {
         const apiUser = await getCurrentUserRequest();
         const apiProfile = await getProfileRequest();
+        const forumPoints = await getTotalForumPointsRequest();
 
         const nextUser = toRegisteredUser(apiUser);
         const nextProfile = toUserProfile(apiProfile);
@@ -178,11 +176,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         setCurrentUser(nextUser);
         setUsers([nextUser]);
         setCurrentProfile(nextProfile);
+        setTotalForumPoints(forumPoints);
       } catch {
         clearAuthSession();
         setCurrentUser(null);
         setCurrentProfile(null);
         setUsers([]);
+        setTotalForumPoints(0);
       } finally {
         setIsLoadingAccount(false);
       }
@@ -190,19 +190,6 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
     void hydrateSession();
   }, [accountRefreshKey]);
-
-  const totalForumPoints = useMemo(() => {
-    if (!currentUser) return 0;
-
-    const memberships = safeReadJson<
-      Record<string, Record<string, { points?: number }>>
-    >(FORUM_MEMBERSHIPS_STORAGE_KEY, {});
-
-    return Object.values(memberships[currentUser.id] ?? {}).reduce(
-      (total, membership) => total + Number(membership.points ?? 0),
-      0,
-    );
-  }, [currentUser, accountRefreshKey]);
 
   async function loadProfile() {
     const apiProfile = await getProfileRequest();
@@ -251,6 +238,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setUsers([nextUser]);
 
       await loadProfile();
+      setTotalForumPoints(0);
 
       return {
         ok: true,
@@ -290,6 +278,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
       await loadProfile();
 
+      const forumPoints = await getTotalForumPointsRequest();
+      setTotalForumPoints(forumPoints);
+
       return {
         ok: true,
         message: "Sesión iniciada correctamente.",
@@ -307,6 +298,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     setCurrentUser(null);
     setCurrentProfile(null);
     setUsers([]);
+    setTotalForumPoints(0);
   }
 
   async function updateProfile(

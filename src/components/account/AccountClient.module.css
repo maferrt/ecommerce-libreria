@@ -763,3 +763,503 @@
   color: var(--mel-cream);
   box-shadow: 0 14px 26px rgba(82, 31, 18, 0.16);
 }
+
+/* =========================
+   FIX MÓDULO 9 - ACCOUNT BACKEND UI
+   Estas clases dan estilo al AccountClient conectado al backend.
+========================= */
+
+.hero {
+  display: grid;
+  gap: 1.1rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 2.25rem;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.68), transparent 24rem),
+    linear-gradient(135deg, rgba(246, 235, 217, 0.92), rgba(248, 225, 193, 0.66));
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  box-shadow: 0 24px 55px rgba(82, 31, 18, 0.13);
+}
+
+.hero span {
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid rgba(82, 31, 18, 0.16);
+  background: rgba(246, 235, 217, 0.8);
+  padding: 0.65rem 1rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mel-caramel);
+}
+
+.hero h1 {
+  max-width: 50rem;
+  font-family: var(--font-cormorant), serif;
+  font-size: clamp(2.7rem, 7vw, 5.2rem);
+  font-weight: 900;
+  line-height: 0.95;
+  color: var(--mel-brown);
+}
+
+.hero p {
+  max-width: 42rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--mel-brown-soft);
+}
+
+.logoutButton {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(82, 31, 18, 0.12);
+  padding: 0.85rem 1.25rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.86rem;
+  font-weight: 900;
+  color: var(--mel-brown);
+  cursor: pointer;
+  transition:
+    transform 0.22s ease,
+    background 0.22s ease,
+    color 0.22s ease;
+}
+
+.logoutButton:hover {
+  transform: translateY(-2px);
+  background: var(--mel-brown);
+  color: var(--mel-cream);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.statCard {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid rgba(82, 31, 18, 0.1);
+  border-radius: 1.4rem;
+  background: rgba(246, 235, 217, 0.74);
+  padding: 1.1rem;
+  box-shadow: 0 14px 30px rgba(82, 31, 18, 0.08);
+  color: var(--mel-brown);
+}
+
+.statCard svg {
+  color: var(--mel-caramel);
+}
+
+.statCard span {
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mel-brown-soft);
+}
+
+.statCard strong {
+  font-family: var(--font-cormorant), serif;
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--mel-brown);
+}
+
+.profileCard,
+.panelCard {
+  margin-top: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 2rem;
+  background: rgba(246, 235, 217, 0.76);
+  padding: clamp(1.25rem, 3vw, 2rem);
+  box-shadow: 0 20px 45px rgba(82, 31, 18, 0.1);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.3rem;
+}
+
+.sectionHeader span {
+  display: block;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mel-caramel);
+}
+
+.sectionHeader h2 {
+  margin-top: 0.25rem;
+  font-family: var(--font-cormorant), serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 900;
+  color: var(--mel-brown);
+}
+
+.sectionHeader a,
+.sectionHeader button {
+  border: 0;
+  border-radius: 999px;
+  background: var(--mel-brown);
+  padding: 0.85rem 1.2rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: var(--mel-cream);
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 14px 30px rgba(82, 31, 18, 0.18);
+}
+
+.profileForm {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.avatarPreview {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.avatarCircle {
+  display: grid;
+  width: 5.25rem;
+  height: 5.25rem;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid rgba(82, 31, 18, 0.14);
+  background: rgba(255, 255, 255, 0.42);
+  color: var(--mel-brown);
+}
+
+.avatarCircle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarPreview h3 {
+  font-family: var(--font-cormorant), serif;
+  font-size: 1.7rem;
+  font-weight: 900;
+  color: var(--mel-brown);
+}
+
+.avatarPreview p {
+  font-family: var(--font-inter), sans-serif;
+  color: var(--mel-brown-soft);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.formGrid label,
+.authForm label {
+  display: grid;
+  gap: 0.45rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mel-brown-soft);
+}
+
+.formGrid input,
+.formGrid select,
+.formGrid textarea,
+.authForm input {
+  width: 100%;
+  border: 1px solid rgba(82, 31, 18, 0.14);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.58);
+  padding: 0.9rem 1rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--mel-brown);
+  outline: none;
+}
+
+.formGrid textarea,
+.authForm textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.formGrid input:disabled,
+.formGrid select:disabled,
+.formGrid textarea:disabled {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.32);
+  color: var(--mel-brown);
+}
+
+.fullField {
+  grid-column: 1 / -1;
+}
+
+.addressSection {
+  border: 1px solid rgba(82, 31, 18, 0.1);
+  border-radius: 1.6rem;
+  background: rgba(255, 255, 255, 0.28);
+  padding: 1.25rem;
+}
+
+.addressSection h3 {
+  margin-bottom: 1rem;
+  font-family: var(--font-cormorant), serif;
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: var(--mel-brown);
+}
+
+.saveButton {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--mel-green);
+  padding: 0.95rem 1.4rem;
+  font-family: var(--font-inter), sans-serif;
+  font-weight: 900;
+  color: var(--mel-cream);
+  cursor: pointer;
+  box-shadow: 0 14px 30px rgba(46, 90, 68, 0.2);
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.emptyMiniState {
+  display: grid;
+  place-items: center;
+  min-height: 11rem;
+  border: 1px dashed rgba(82, 31, 18, 0.18);
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.32);
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--mel-brown-soft);
+}
+
+.emptyMiniState svg {
+  color: var(--mel-caramel);
+}
+
+.ordersPreview,
+.wishlistPreview {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.previewItem,
+.wishlistItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgba(82, 31, 18, 0.09);
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.38);
+  padding: 1rem;
+}
+
+.previewItem div,
+.wishlistItem div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.previewItem span,
+.wishlistItem span {
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mel-caramel);
+}
+
+.previewItem strong,
+.wishlistItem strong {
+  font-family: var(--font-cormorant), serif;
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: var(--mel-brown);
+}
+
+.previewItem small,
+.wishlistItem small {
+  font-family: var(--font-inter), sans-serif;
+  color: var(--mel-brown-soft);
+}
+
+.wishlistItem button {
+  border: 0;
+  border-radius: 999px;
+  background: rgba(82, 31, 18, 0.1);
+  padding: 0.7rem 1rem;
+  font-family: var(--font-inter), sans-serif;
+  font-weight: 900;
+  color: var(--mel-brown);
+  cursor: pointer;
+}
+
+.authShell {
+  margin: 1.5rem auto 0;
+  max-width: 42rem;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 2rem;
+  background: rgba(246, 235, 217, 0.78);
+  padding: 1.25rem;
+  box-shadow: 0 20px 45px rgba(82, 31, 18, 0.1);
+}
+
+.authTabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.authTabs button {
+  border: 0;
+  border-radius: 999px;
+  background: rgba(82, 31, 18, 0.1);
+  padding: 0.9rem 1rem;
+  font-family: var(--font-inter), sans-serif;
+  font-weight: 900;
+  color: var(--mel-brown);
+  cursor: pointer;
+}
+
+.authTabs .activeTab,
+.activeTab {
+  background: var(--mel-brown);
+  color: var(--mel-cream);
+}
+
+.authForm {
+  display: grid;
+  gap: 1rem;
+}
+
+.authForm h2 {
+  font-family: var(--font-cormorant), serif;
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: var(--mel-brown);
+}
+
+.authForm button[type="submit"] {
+  border: 0;
+  border-radius: 999px;
+  background: var(--mel-brown);
+  padding: 1rem 1.4rem;
+  font-family: var(--font-inter), sans-serif;
+  font-weight: 900;
+  color: var(--mel-cream);
+  cursor: pointer;
+}
+
+.emptyState {
+  display: grid;
+  place-items: center;
+  gap: 1rem;
+  min-height: 28rem;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 2rem;
+  background: rgba(246, 235, 217, 0.76);
+  padding: 2rem;
+  text-align: center;
+  box-shadow: 0 20px 45px rgba(82, 31, 18, 0.1);
+}
+
+.emptyState h1,
+.emptyState h2 {
+  font-family: var(--font-cormorant), serif;
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+  font-weight: 900;
+  color: var(--mel-brown);
+}
+
+.emptyState p {
+  max-width: 34rem;
+  font-family: var(--font-inter), sans-serif;
+  line-height: 1.7;
+  color: var(--mel-brown-soft);
+}
+
+.emptyIcon {
+  display: grid;
+  width: 5.5rem;
+  height: 5.5rem;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(82, 31, 18, 0.1);
+  color: var(--mel-brown);
+}
+
+@media (max-width: 900px) {
+  .statsGrid,
+  .dashboardGrid,
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sectionHeader,
+  .previewItem,
+  .wishlistItem {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero,
+  .profileCard,
+  .panelCard,
+  .authShell,
+  .emptyState {
+    border-radius: 1.4rem;
+  }
+
+  .statsGrid {
+    gap: 0.75rem;
+  }
+
+  .statCard {
+    padding: 1rem;
+  }
+}

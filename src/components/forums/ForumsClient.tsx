@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAccount } from "@/context/AccountContext";
-import { ClientPortal } from "@/components/ui/ClientPortal";
 import {
   BookOpen,
   ImagePlus,
@@ -26,220 +24,53 @@ import {
 import {
   type ChangeEvent,
   type FormEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import Swal from "sweetalert2";
+import { ClientPortal } from "@/components/ui/ClientPortal";
+import { useAccount } from "@/context/AccountContext";
+import { forumCategories, POINTS_BY_POST, POINTS_BY_REPLY } from "@/data/forums";
 import {
-  forumCategories,
-  POINTS_BY_POST,
-  POINTS_BY_REPLY,
-} from "@/data/forums";
+  createForumPostRequest,
+  createForumReplyRequest,
+  deleteForumPostRequest,
+  deleteForumReplyRequest,
+  getForumPostDetailRequest,
+  getForumPostsRequest,
+  getForumsRequest,
+  subscribeForumRequest,
+  unsubscribeForumRequest,
+} from "@/lib/forum-api";
 import type {
-  ForumCategory,
-  ForumMembershipsByUser,
-  ForumPost,
-  ForumReply,
-  ForumUser,
-} from "@/types/forum";
+  ApiForumAuthor,
+  ApiForumPostDetailResponse,
+  ApiForumPostResponse,
+  ApiForumReplyResponse,
+  ApiForumResponse,
+} from "@/lib/api-types";
 import styles from "./ForumsClient.module.css";
 
-const USER_STORAGE_KEY = "mel_logged_user";
-const MEMBERSHIPS_STORAGE_KEY = "mel_forum_memberships";
+const FORUM_MEMBERSHIPS_STORAGE_KEY = "mel_forum_memberships";
 
-const ACCOUNT_USERS_STORAGE_KEY = "mel_registered_users";
-const ACCOUNT_PROFILES_STORAGE_KEY = "mel_user_profiles";
-
-type StoredAccountUser = {
+type ForumUser = {
   id: string;
-  name?: string;
-};
-
-type StoredAccountProfile = {
-  displayName?: string;
+  username: string;
   avatar?: string | null;
 };
 
-function getForumPostsStorageKey(forumId: string) {
-  return `mel_forum_posts_${forumId}`;
-}
-
-function getForumRepliesStorageKey(forumId: string, postId: string) {
-  return `mel_forum_replies_${forumId}_${postId}`;
-}
-
-function createId(prefix: string) {
-  return `${prefix}-${crypto.randomUUID()}`;
-}
-
-function safeReadJson<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-
-  const rawValue = window.localStorage.getItem(key);
-
-  if (!rawValue) return fallback;
-
-  try {
-    return JSON.parse(rawValue) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function getAuthorDisplay(
-  authorId: string,
-  fallbackName: string,
-  fallbackAvatar?: string | null,
-) {
-  const profiles = safeReadJson<Record<string, StoredAccountProfile>>(
-    ACCOUNT_PROFILES_STORAGE_KEY,
-    {},
-  );
-
-  const users = safeReadJson<StoredAccountUser[]>(
-    ACCOUNT_USERS_STORAGE_KEY,
-    [],
-  );
-
-  const profile = profiles[authorId];
-  const user = users.find((storedUser) => storedUser.id === authorId);
-
-  return {
-    name: profile?.displayName ?? user?.name ?? fallbackName,
-    avatar: profile?.avatar ?? fallbackAvatar ?? null,
-  };
-}
-
-function saveJson<T>(key: string, value: T) {
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
-
-function getStoredUser() {
-  return safeReadJson<ForumUser | null>(USER_STORAGE_KEY, null);
-}
-
-function saveStoredUser(user: ForumUser | null) {
-  if (!user) {
-    window.localStorage.removeItem(USER_STORAGE_KEY);
-    return;
-  }
-
-  saveJson(USER_STORAGE_KEY, user);
-}
-
-function getStoredPosts(forumId: string) {
-  return safeReadJson<ForumPost[]>(getForumPostsStorageKey(forumId), []);
-}
-
-function saveStoredPosts(forumId: string, posts: ForumPost[]) {
-  saveJson(getForumPostsStorageKey(forumId), posts);
-}
-
-function getStoredReplies(forumId: string, postId: string) {
-  return safeReadJson<ForumReply[]>(
-    getForumRepliesStorageKey(forumId, postId),
-    [],
-  );
-}
-
-function saveStoredReplies(
-  forumId: string,
-  postId: string,
-  replies: ForumReply[],
-) {
-  saveJson(getForumRepliesStorageKey(forumId, postId), replies);
-}
-
-function removeStoredReplies(forumId: string, postId: string) {
-  window.localStorage.removeItem(getForumRepliesStorageKey(forumId, postId));
-}
-
-function getAllMemberships() {
-  return safeReadJson<ForumMembershipsByUser>(MEMBERSHIPS_STORAGE_KEY, {});
-}
-
-function saveAllMemberships(memberships: ForumMembershipsByUser) {
-  saveJson(MEMBERSHIPS_STORAGE_KEY, memberships);
-}
-
-function getUserForumMembership(userId: string, forumId: string) {
-  const memberships = getAllMemberships();
-
-  return memberships[userId]?.[forumId] ?? null;
-}
-
-function isUserSubscribedToForum(userId: string, forumId: string) {
-  return Boolean(getUserForumMembership(userId, forumId));
-}
-
-function subscribeUserToForum(userId: string, forumId: string) {
-  const memberships = getAllMemberships();
-
-  if (!memberships[userId]) {
-    memberships[userId] = {};
-  }
-
-  if (!memberships[userId][forumId]) {
-    memberships[userId][forumId] = {
-      forumId,
-      joinedAt: new Date().toISOString(),
-      points: 0,
-    };
-  }
-
-  saveAllMemberships(memberships);
-}
-
-function unsubscribeUserFromForum(userId: string, forumId: string) {
-  const memberships = getAllMemberships();
-
-  if (!memberships[userId]?.[forumId]) return;
-
-  delete memberships[userId][forumId];
-
-  if (Object.keys(memberships[userId]).length === 0) {
-    delete memberships[userId];
-  }
-
-  saveAllMemberships(memberships);
-}
-
-function updateUserForumPoints(userId: string, forumId: string, delta: number) {
-  const memberships = getAllMemberships();
-
-  if (!memberships[userId]) {
-    memberships[userId] = {};
-  }
-
-  if (!memberships[userId][forumId]) {
-    memberships[userId][forumId] = {
-      forumId,
-      joinedAt: new Date().toISOString(),
-      points: 0,
-    };
-  }
-
-  memberships[userId][forumId].points = Math.max(
-    0,
-    memberships[userId][forumId].points + delta,
-  );
-
-  saveAllMemberships(memberships);
-}
-
-function getForumMembersCount(forumId: string) {
-  const memberships = getAllMemberships();
-
-  return Object.values(memberships).filter((userMemberships) =>
-    Boolean(userMemberships[forumId]),
-  ).length;
-}
-
-function getForumTopicsCount(forumId: string) {
-  return getStoredPosts(forumId).length;
-}
+type ForumCardData = {
+  slug: string;
+  name: string;
+  description: string;
+  icono: string;
+  subscribed: boolean;
+  points: number;
+  postCount: number;
+};
 
 function formatDate(date: string) {
   return new Intl.DateTimeFormat("es-MX", {
@@ -260,6 +91,154 @@ function getPlainTextFromHtml(html: string) {
   return element.textContent?.trim() ?? "";
 }
 
+function getForumIcon(slug: string) {
+  return forumCategories.find((forum) => forum.id === slug)?.icono ?? "📚";
+}
+
+function toForumCardData(forum: ApiForumResponse): ForumCardData {
+  return {
+    slug: forum.slug,
+    name: forum.name,
+    description: forum.description,
+    icono: getForumIcon(forum.slug),
+    subscribed: forum.subscribed,
+    points: forum.points,
+    postCount: Number(forum.postCount ?? 0),
+  };
+}
+
+function getFallbackForumCards(): ForumCardData[] {
+  return forumCategories.map((forum) => ({
+    slug: forum.id,
+    name: forum.nombre,
+    description: forum.descripcion,
+    icono: forum.icono,
+    subscribed: false,
+    points: 0,
+    postCount: 0,
+  }));
+}
+
+function syncForumPointsForAccount(userId: string, forums: ApiForumResponse[]) {
+  if (typeof window === "undefined") return;
+
+  const userMemberships = forums.reduce<
+    Record<string, { forumId: string; joinedAt: string; points: number }>
+  >((memberships, forum) => {
+    if (!forum.subscribed) return memberships;
+
+    memberships[forum.slug] = {
+      forumId: forum.slug,
+      joinedAt: new Date().toISOString(),
+      points: forum.points,
+    };
+
+    return memberships;
+  }, {});
+
+  const storedMemberships = JSON.parse(
+    window.localStorage.getItem(FORUM_MEMBERSHIPS_STORAGE_KEY) ?? "{}",
+  ) as Record<string, Record<string, { forumId: string; joinedAt: string; points: number }>>;
+
+  storedMemberships[userId] = userMemberships;
+
+  window.localStorage.setItem(
+    FORUM_MEMBERSHIPS_STORAGE_KEY,
+    JSON.stringify(storedMemberships),
+  );
+}
+
+function sanitizeRichHtml(html: string) {
+  if (typeof document === "undefined") return html;
+
+  const template = document.createElement("template");
+  template.innerHTML = html;
+
+  const allowedTags = new Set([
+    "B",
+    "I",
+    "U",
+    "STRONG",
+    "EM",
+    "UL",
+    "OL",
+    "LI",
+    "A",
+    "IMG",
+    "BR",
+    "DIV",
+    "P",
+    "SPAN",
+  ]);
+
+  function cleanNode(node: Node) {
+    const children = Array.from(node.childNodes);
+
+    children.forEach((child) => {
+      if (child.nodeType === Node.TEXT_NODE) return;
+
+      if (!(child instanceof HTMLElement)) {
+        child.remove();
+        return;
+      }
+
+      if (!allowedTags.has(child.tagName)) {
+        child.replaceWith(...Array.from(child.childNodes));
+        return;
+      }
+
+      Array.from(child.attributes).forEach((attribute) => {
+        const name = attribute.name.toLowerCase();
+        const value = attribute.value;
+
+        if (name.startsWith("on")) {
+          child.removeAttribute(attribute.name);
+          return;
+        }
+
+        if (child.tagName === "A" && name === "href") {
+          const isSafeLink =
+            value.startsWith("http://") ||
+            value.startsWith("https://") ||
+            value.startsWith("mailto:");
+
+          if (!isSafeLink) {
+            child.removeAttribute("href");
+            return;
+          }
+
+          child.setAttribute("target", "_blank");
+          child.setAttribute("rel", "noopener noreferrer");
+          return;
+        }
+
+        if (child.tagName === "IMG" && name === "src") {
+          const isSafeImage =
+            value.startsWith("data:image/") ||
+            value.startsWith("http://") ||
+            value.startsWith("https://");
+
+          if (!isSafeImage) {
+            child.remove();
+          }
+
+          return;
+        }
+
+        if (child.tagName === "IMG" && name === "alt") return;
+
+        child.removeAttribute(attribute.name);
+      });
+
+      cleanNode(child);
+    });
+  }
+
+  cleanNode(template.content);
+
+  return template.innerHTML.trim();
+}
+
 function showToast(
   title: string,
   icon: "success" | "error" | "warning" | "info" = "info",
@@ -277,48 +256,17 @@ function showToast(
   });
 }
 
-async function showLoginAlert() {
-  const result = await Swal.fire<string>({
-    title: "Inicia sesión",
-    text: "Para entrar a un foro necesitas iniciar sesión primero.",
-    input: "text",
-    inputLabel: "Nombre de usuario",
-    inputPlaceholder: "Ej. Mafer",
-    confirmButtonText: "Entrar",
-    cancelButtonText: "Cancelar",
-    showCancelButton: true,
-    confirmButtonColor: "#521f12",
-    cancelButtonColor: "#a0653d",
-    background: "#f6ebd9",
-    color: "#521f12",
-    inputValidator: (value) => {
-      if (!value.trim()) {
-        return "Escribe un nombre de usuario.";
-      }
-
-      return null;
-    },
-  });
-
-  if (!result.isConfirmed || !result.value) {
-    return null;
-  }
-
-  const username = result.value.trim();
-
-  return {
-    id: `local-user-${username.toLowerCase().replace(/\s+/g, "-")}`,
-    username,
-  } satisfies ForumUser;
-}
-
-async function confirmAction(title: string, text: string) {
+async function confirmAction(
+  title: string,
+  text: string,
+  confirmButtonText = "Sí, eliminar",
+) {
   const result = await Swal.fire({
     title,
     text,
     icon: "warning",
     showCancelButton: true,
-    confirmButtonText: "Sí, eliminar",
+    confirmButtonText,
     cancelButtonText: "Cancelar",
     confirmButtonColor: "#7a2626",
     cancelButtonColor: "#a0653d",
@@ -332,14 +280,22 @@ async function confirmAction(title: string, text: string) {
   return result.isConfirmed;
 }
 
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Ocurrió un error al conectar con el servidor.";
+}
+
 export function ForumsClient() {
   const router = useRouter();
+
   const {
     currentUser: accountUser,
     currentProfile,
     isAuthenticated,
     logoutUser,
-    refreshAccountData,
   } = useAccount();
 
   const currentUser = useMemo<ForumUser | null>(() => {
@@ -352,50 +308,91 @@ export function ForumsClient() {
     };
   }, [accountUser, currentProfile]);
 
-  const [selectedForum, setSelectedForum] = useState<ForumCategory | null>(null);
-  const [selectedPost, setSelectedPost] = useState<ForumPost | null>(null);
+  const [forums, setForums] = useState<ApiForumResponse[]>([]);
+  const [selectedForumSlug, setSelectedForumSlug] = useState<string | null>(null);
+  const [selectedForumPosts, setSelectedForumPosts] = useState<ApiForumPostResponse[]>([]);
+  const [selectedPostDetail, setSelectedPostDetail] =
+    useState<ApiForumPostDetailResponse | null>(null);
   const [showAllPosts, setShowAllPosts] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [hasHydratedForums, setHasHydratedForums] = useState(false);
+  const [isLoadingForums, setIsLoadingForums] = useState(false);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+  const [forumsError, setForumsError] = useState("");
 
-  useEffect(() => {
-    setHasHydratedForums(true);
+  const loadForums = useCallback(async () => {
+    if (!isAuthenticated || !currentUser) {
+      setForums([]);
+      return;
+    }
+
+    try {
+      setIsLoadingForums(true);
+      setForumsError("");
+
+      const response = await getForumsRequest();
+
+      setForums(response);
+      syncForumPointsForAccount(currentUser.id, response);
+    } catch (error) {
+      setForumsError(getErrorMessage(error));
+    } finally {
+      setIsLoadingForums(false);
+    }
+  }, [currentUser, isAuthenticated]);
+
+  const loadSelectedForumPosts = useCallback(async (forumSlug: string) => {
+    try {
+      setIsLoadingPosts(true);
+
+      const response = await getForumPostsRequest(forumSlug);
+
+      setSelectedForumPosts(response);
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
+      setSelectedForumPosts([]);
+    } finally {
+      setIsLoadingPosts(false);
+    }
   }, []);
 
-  const selectedForumPosts = useMemo(() => {
-    if (!selectedForum) return [];
+  useEffect(() => {
+    void loadForums();
+  }, [loadForums]);
 
-    const posts = getStoredPosts(selectedForum.id).sort(
-      (firstPost, secondPost) =>
-        new Date(secondPost.createdAt).getTime() -
-        new Date(firstPost.createdAt).getTime(),
-    );
+  useEffect(() => {
+    if (!selectedForumSlug || !isAuthenticated) return;
 
-    return showAllPosts ? posts : posts.slice(0, 3);
-  }, [selectedForum, showAllPosts, refreshKey]);
+    void loadSelectedForumPosts(selectedForumSlug);
+  }, [selectedForumSlug, isAuthenticated, loadSelectedForumPosts]);
 
-  const allSelectedForumPosts = selectedForum
-    ? getStoredPosts(selectedForum.id)
-    : [];
+  const forumCards = useMemo(() => {
+    if (forums.length > 0) {
+      return forums.map(toForumCardData);
+    }
 
-  const isSubscribed =
-    currentUser && selectedForum
-      ? isUserSubscribedToForum(currentUser.id, selectedForum.id)
-      : false;
+    return getFallbackForumCards();
+  }, [forums]);
 
-  const currentPoints =
-    currentUser && selectedForum
-      ? getUserForumMembership(currentUser.id, selectedForum.id)?.points ?? 0
-      : 0;
+  const selectedForum = useMemo(() => {
+    if (!selectedForumSlug) return null;
 
-  const forumMembers = selectedForum ? getForumMembersCount(selectedForum.id) : 0;
-  const forumTopics = selectedForum ? getForumTopicsCount(selectedForum.id) : 0;
+    return forums.find((forum) => forum.slug === selectedForumSlug) ?? null;
+  }, [forums, selectedForumSlug]);
 
-  function refresh() {
-    setRefreshKey((currentValue) => currentValue + 1);
-  }
+  const selectedForumCard = selectedForum
+    ? toForumCardData(selectedForum)
+    : selectedForumSlug
+      ? forumCards.find((forum) => forum.slug === selectedForumSlug) ?? null
+      : null;
 
-  async function handleForumClick(forum: ForumCategory) {
+  const visiblePosts = showAllPosts
+    ? selectedForumPosts
+    : selectedForumPosts.slice(0, 3);
+
+  const isSubscribed = Boolean(selectedForum?.subscribed);
+  const currentPoints = selectedForum?.points ?? 0;
+  const forumTopics = selectedForum?.postCount ?? selectedForumPosts.length;
+
+  async function handleForumClick(forum: ForumCardData) {
     if (!isAuthenticated || !currentUser) {
       const result = await Swal.fire({
         icon: "info",
@@ -417,67 +414,88 @@ export function ForumsClient() {
       return;
     }
 
-  setSelectedForum(forum);
-  setSelectedPost(null);
-  setShowAllPosts(false);
-}
+    setSelectedForumSlug(forum.slug);
+    setSelectedPostDetail(null);
+    setShowAllPosts(false);
+  }
 
   function handleLogout() {
     logoutUser();
-    setSelectedForum(null);
-    setSelectedPost(null);
+    setSelectedForumSlug(null);
+    setSelectedPostDetail(null);
     setShowAllPosts(false);
     showToast("Sesión cerrada.", "info");
   }
 
   function handleBackToForums() {
-    setSelectedForum(null);
-    setSelectedPost(null);
+    setSelectedForumSlug(null);
+    setSelectedPostDetail(null);
     setShowAllPosts(false);
   }
 
-  function handleSubscribe() {
-    if (!currentUser || !selectedForum) return;
+  async function reloadForumData() {
+    await loadForums();
 
-    subscribeUserToForum(currentUser.id, selectedForum.id);
-    refresh();
-    refreshAccountData();
-    showToast("Te suscribiste a este foro. Ya puedes participar.", "success");
+    if (selectedForumSlug) {
+      await loadSelectedForumPosts(selectedForumSlug);
+    }
+  }
+
+  async function handleSubscribe() {
+    if (!selectedForumSlug) return;
+
+    try {
+      const response = await subscribeForumRequest(selectedForumSlug);
+
+      setForums((currentForums) =>
+        currentForums.map((forum) =>
+          forum.slug === response.slug ? response : forum,
+        ),
+      );
+
+      await reloadForumData();
+
+      showToast("Te suscribiste a este foro. Ya puedes participar.", "success");
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
+    }
   }
 
   async function handleUnsubscribe() {
-    if (!currentUser || !selectedForum) return;
+    if (!selectedForumSlug) return;
 
-    const confirmed = await Swal.fire({
-      title: "¿Desuscribirte del foro?",
-      text: "Ya no podrás publicar ni responder en este foro. Tus puntos de este foro también se reiniciarán.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Sí, desuscribirme",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: "#7a2626",
-      cancelButtonColor: "#a0653d",
-      background: "#f6ebd9",
-      color: "#521f12",
-    });
+    const confirmed = await confirmAction(
+      "¿Desuscribirte del foro?",
+      "Ya no podrás publicar ni responder en este foro hasta suscribirte de nuevo. Tus publicaciones y respuestas no se eliminan.",
+      "Sí, desuscribirme",
+    );
 
-    if (!confirmed.isConfirmed) return;
+    if (!confirmed) return;
 
-    unsubscribeUserFromForum(currentUser.id, selectedForum.id);
+    try {
+      const response = await unsubscribeForumRequest(selectedForumSlug);
 
-    refresh();
-    refreshAccountData();
+      setForums((currentForums) =>
+        currentForums.map((forum) =>
+          forum.slug === response.slug ? response : forum,
+        ),
+      );
 
-    showToast("Te desuscribiste de este foro.", "info");
+      await reloadForumData();
+
+      showToast("Te desuscribiste de este foro.", "info");
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
+    }
   }
 
   function requireSubscription() {
-    if (!currentUser || !selectedForum) {
+    if (!currentUser || !selectedForumSlug) {
       showToast("Debes iniciar sesión y entrar a un foro.", "warning");
       return false;
     }
 
-    if (!isUserSubscribedToForum(currentUser.id, selectedForum.id)) {
+    if (!isSubscribed) {
       showToast("Debes suscribirte a este foro para participar.", "warning");
       return false;
     }
@@ -485,67 +503,58 @@ export function ForumsClient() {
     return true;
   }
 
-  function handleCreatePost(title: string, contentHtml: string) {
-    if (!selectedForum || !currentUser) return false;
-
+  async function handleCreatePost(title: string, contentHtml: string) {
+    if (!selectedForumSlug || !currentUser) return false;
     if (!requireSubscription()) return false;
 
     const cleanTitle = title.trim();
-    const cleanText = getPlainTextFromHtml(contentHtml);
+    const cleanHtml = sanitizeRichHtml(contentHtml);
+    const cleanText = getPlainTextFromHtml(cleanHtml);
 
     if (!cleanTitle || !cleanText) {
       showToast("La publicación necesita título y contenido.", "warning");
       return false;
     }
 
-    const newPost: ForumPost = {
-      id: createId("post"),
-      forumId: selectedForum.id,
-      title: cleanTitle,
-      contentHtml,
-      authorId: currentUser.id,
-      authorName: currentUser.username,
-      createdAt: new Date().toISOString(),
-    };
-
     try {
-      const currentPosts = getStoredPosts(selectedForum.id);
-
-      saveStoredPosts(selectedForum.id, [newPost, ...currentPosts]);
-      updateUserForumPoints(currentUser.id, selectedForum.id, POINTS_BY_POST);
-    } catch (error) {
-      console.error("Error guardando publicación:", error);
-
-      void Swal.fire({
-        icon: "error",
-        title: "No se pudo guardar",
-        text: "El navegador no pudo guardar la publicación. Esto puede pasar si el almacenamiento local está lleno. Intenta quitar imágenes muy pesadas del perfil o limpiar datos locales.",
-        confirmButtonColor: "#521f12",
-        background: "#f6ebd9",
-        color: "#521f12",
+      await createForumPostRequest(selectedForumSlug, {
+        title: cleanTitle,
+        contentHtml: cleanHtml,
       });
 
+      await reloadForumData();
+
+      showToast(`Publicación creada. +${POINTS_BY_POST} puntos.`, "success");
+
+      return true;
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
       return false;
     }
-
-    refresh();
-    refreshAccountData();
-
-    showToast(`Publicación creada. +${POINTS_BY_POST} puntos.`, "success");
-
-    return true;
   }
 
-  function handleOpenPost(post: ForumPost) {
-    setSelectedPost(post);
+  async function handleOpenPost(post: ApiForumPostResponse) {
+    try {
+      const response = await getForumPostDetailRequest(post.id);
+
+      setSelectedPostDetail(response);
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
+    }
   }
 
-  function handlePostDeleted() {
-    setSelectedPost(null);
-    refresh();
+  async function reloadSelectedPostDetail(postId: number) {
+    const response = await getForumPostDetailRequest(postId);
+
+    setSelectedPostDetail(response);
   }
 
-  if (!selectedForum) {
+  async function handlePostDeleted() {
+    setSelectedPostDetail(null);
+    await reloadForumData();
+  }
+
+  if (!selectedForumSlug || !selectedForumCard) {
     return (
       <main className={styles.page}>
         <section className={styles.homeView}>
@@ -574,29 +583,43 @@ export function ForumsClient() {
           <section className={styles.listSection}>
             <h2>Elige un género literario</h2>
 
+            {isLoadingForums && (
+              <article className={styles.emptyCard}>
+                <BookOpen size={26} />
+                <p>Cargando foros desde el backend...</p>
+              </article>
+            )}
+
+            {forumsError && isAuthenticated && (
+              <article className={styles.emptyCard}>
+                <BookOpen size={26} />
+                <p>{forumsError}</p>
+              </article>
+            )}
+
             <div className={styles.grid}>
-              {forumCategories.map((forum) => (
+              {forumCards.map((forum) => (
                 <button
                   type="button"
-                  key={forum.id}
+                  key={forum.slug}
                   className={styles.forumCard}
                   onClick={() => void handleForumClick(forum)}
                 >
                   <span className={styles.cardIcon}>{forum.icono}</span>
 
                   <div>
-                    <h3>{forum.nombre}</h3>
-                    <p>{forum.descripcion}</p>
+                    <h3>{forum.name}</h3>
+                    <p>{forum.description}</p>
 
                     <div className={styles.cardStats}>
                       <span>
                         <MessageCircle size={15} />
-                        {hasHydratedForums ? getForumTopicsCount(forum.id) : 0} temas activos
+                        {forum.postCount} temas activos
                       </span>
 
                       <span>
                         <UsersRound size={15} />
-                        {hasHydratedForums ? getForumMembersCount(forum.id) : 0} miembros
+                        {forum.subscribed ? "Suscrita" : "Disponible"}
                       </span>
                     </div>
                   </div>
@@ -621,19 +644,19 @@ export function ForumsClient() {
             <h2>Géneros</h2>
 
             <div className={styles.genreMenu}>
-              {forumCategories.map((forum) => (
+              {forumCards.map((forum) => (
                 <button
                   type="button"
-                  key={forum.id}
+                  key={forum.slug}
                   className={
-                    forum.id === selectedForum.id
+                    forum.slug === selectedForumSlug
                       ? `${styles.genreButton} ${styles.genreButtonActive}`
                       : styles.genreButton
                   }
                   onClick={() => void handleForumClick(forum)}
                 >
                   <span>{forum.icono}</span>
-                  {forum.nombre}
+                  {forum.name}
                 </button>
               ))}
             </div>
@@ -656,16 +679,16 @@ export function ForumsClient() {
           </button>
 
           <header className={styles.detailHeader}>
-            <div className={styles.detailIcon}>{selectedForum.icono}</div>
+            <div className={styles.detailIcon}>{selectedForumCard.icono}</div>
 
             <div>
-              <h1>Foro de {selectedForum.nombre}</h1>
-              <p>{selectedForum.descripcion}</p>
+              <h1>Foro de {selectedForumCard.name}</h1>
+              <p>{selectedForumCard.description}</p>
             </div>
           </header>
 
           <CreatePostCard
-            canParticipate={Boolean(isSubscribed)}
+            canParticipate={isSubscribed}
             onCreatePost={handleCreatePost}
           />
 
@@ -673,23 +696,28 @@ export function ForumsClient() {
             <h2>Publicaciones recientes</h2>
 
             <div className={styles.postsList}>
-              {selectedForumPosts.length === 0 ? (
+              {isLoadingPosts ? (
+                <article className={styles.emptyCard}>
+                  <BookOpen size={26} />
+                  <p>Cargando publicaciones...</p>
+                </article>
+              ) : visiblePosts.length === 0 ? (
                 <article className={styles.emptyCard}>
                   <BookOpen size={26} />
                   <p>Este foro todavía no tiene publicaciones.</p>
                 </article>
               ) : (
-                selectedForumPosts.map((post) => (
+                visiblePosts.map((post) => (
                   <PostCard
                     key={post.id}
                     post={post}
-                    onOpen={() => handleOpenPost(post)}
+                    onOpen={() => void handleOpenPost(post)}
                   />
                 ))
               )}
             </div>
 
-            {allSelectedForumPosts.length > 3 && (
+            {selectedForumPosts.length > 3 && (
               <button
                 type="button"
                 className={styles.loadMoreButton}
@@ -708,31 +736,31 @@ export function ForumsClient() {
             <h2>Resumen del foro</h2>
 
             {!isSubscribed ? (
-                <button
-                    type="button"
-                    className={styles.subscribeButton}
-                    onClick={handleSubscribe}
-                >
-                    <UserPlus size={17} />
-                    Suscribirme al foro
-                </button>
-                ) : (
-                <button
-                    type="button"
-                    className={styles.unsubscribeButton}
-                    onClick={() => void handleUnsubscribe()}
-                >
-                    <UserPlus size={17} />
-                    Desuscribirme del foro
-                </button>
+              <button
+                type="button"
+                className={styles.subscribeButton}
+                onClick={() => void handleSubscribe()}
+              >
+                <UserPlus size={17} />
+                Suscribirme al foro
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={styles.unsubscribeButton}
+                onClick={() => void handleUnsubscribe()}
+              >
+                <UserPlus size={17} />
+                Desuscribirme del foro
+              </button>
             )}
 
             <div className={styles.summaryRow}>
               <span>
                 <UsersRound size={17} />
-                Miembros activos
+                Estado
               </span>
-              <strong>{forumMembers}</strong>
+              <strong>{isSubscribed ? "Suscrita" : "No suscrita"}</strong>
             </div>
 
             <div className={styles.summaryRow}>
@@ -786,16 +814,17 @@ export function ForumsClient() {
         </aside>
       </section>
 
-      {selectedPost && (
+      {selectedPostDetail && (
         <ClientPortal>
           <PostDetailModal
-            post={selectedPost}
+            detail={selectedPostDetail}
             currentUser={currentUser}
-            canParticipate={Boolean(isSubscribed)}
-            onClose={() => setSelectedPost(null)}
-            onRefresh={refresh}
-            onPostDeleted={handlePostDeleted}
-            onPointsChanged={refreshAccountData}
+            canParticipate={isSubscribed}
+            onClose={() => setSelectedPostDetail(null)}
+            onDetailChange={setSelectedPostDetail}
+            onReloadPost={reloadSelectedPostDetail}
+            onPostDeleted={() => void handlePostDeleted()}
+            onPointsChanged={() => void reloadForumData()}
           />
         </ClientPortal>
       )}
@@ -805,22 +834,27 @@ export function ForumsClient() {
 
 type CreatePostCardProps = {
   canParticipate: boolean;
-  onCreatePost: (title: string, contentHtml: string) => boolean;
+  onCreatePost: (title: string, contentHtml: string) => Promise<boolean>;
 };
 
 function CreatePostCard({ canParticipate, onCreatePost }: CreatePostCardProps) {
   const [title, setTitle] = useState("");
   const [contentHtml, setContentHtml] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const wasCreated = onCreatePost(title, contentHtml);
+    setIsSubmitting(true);
+
+    const wasCreated = await onCreatePost(title, contentHtml);
 
     if (wasCreated) {
       setTitle("");
       setContentHtml("");
     }
+
+    setIsSubmitting(false);
   }
 
   return (
@@ -841,30 +875,29 @@ function CreatePostCard({ canParticipate, onCreatePost }: CreatePostCardProps) {
         <input
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          disabled={!canParticipate}
+          disabled={!canParticipate || isSubmitting}
           placeholder="Título"
         />
 
         <RichTextEditor
           value={contentHtml}
           onChange={setContentHtml}
-          disabled={!canParticipate}
+          disabled={!canParticipate || isSubmitting}
           placeholder="Escribe tu comentario."
         />
 
         <button
           type="submit"
           className={styles.publishButton}
-          disabled={!canParticipate}
+          disabled={!canParticipate || isSubmitting}
         >
-          Publicar
+          {isSubmitting ? "Publicando..." : "Publicar"}
           <Send size={16} />
         </button>
       </form>
     </section>
   );
 }
-
 
 type RichTextEditorProps = {
   value: string;
@@ -891,7 +924,7 @@ function RichTextEditor({
   }, [value]);
 
   function syncValue() {
-    onChange(editorRef.current?.innerHTML ?? "");
+    onChange(sanitizeRichHtml(editorRef.current?.innerHTML ?? ""));
   }
 
   function runCommand(command: string, commandValue?: string) {
@@ -1040,18 +1073,12 @@ function RichTextEditor({
   );
 }
 
-type PostCardProps = {
-  post: ForumPost;
-  onOpen: () => void;
-};
-
 type ForumAvatarProps = {
-  name: string;
-  avatar?: string | null;
+  author: ApiForumAuthor;
   size?: "sm" | "md";
 };
 
-function ForumAvatar({ name, avatar, size = "md" }: ForumAvatarProps) {
+function ForumAvatar({ author, size = "md" }: ForumAvatarProps) {
   return (
     <div
       className={
@@ -1060,34 +1087,35 @@ function ForumAvatar({ name, avatar, size = "md" }: ForumAvatarProps) {
           : styles.avatar
       }
     >
-      {avatar ? (
+      {author.avatar ? (
         <img
-          src={avatar}
-          alt={`Foto de perfil de ${name}`}
+          src={author.avatar}
+          alt={`Foto de perfil de ${author.name}`}
           className={styles.avatarPhoto}
         />
       ) : (
-        name.charAt(0).toUpperCase()
+        author.name.charAt(0).toUpperCase()
       )}
     </div>
   );
 }
 
+type PostCardProps = {
+  post: ApiForumPostResponse;
+  onOpen: () => void;
+};
+
 function PostCard({ post, onOpen }: PostCardProps) {
-  const author = getAuthorDisplay(
-    post.authorId,
-    post.authorName,
-    post.authorAvatar,
-  );
   return (
     <article className={styles.postCard}>
       <div className={styles.postMain}>
-        <ForumAvatar name={author.name} avatar={author.avatar} />
+        <ForumAvatar author={post.author} />
 
         <div>
           <h3>{post.title}</h3>
           <p>
-            {author.name} · {formatDate(post.createdAt)}
+            {post.author.name} · {formatDate(post.createdAt)} ·{" "}
+            {post.replyCount} respuestas
           </p>
         </div>
       </div>
@@ -1100,43 +1128,33 @@ function PostCard({ post, onOpen }: PostCardProps) {
 }
 
 type PostDetailModalProps = {
-  post: ForumPost;
+  detail: ApiForumPostDetailResponse;
   currentUser: ForumUser | null;
   canParticipate: boolean;
   onClose: () => void;
-  onRefresh: () => void;
+  onDetailChange: (detail: ApiForumPostDetailResponse) => void;
+  onReloadPost: (postId: number) => Promise<void>;
   onPostDeleted: () => void;
   onPointsChanged: () => void;
 };
 
 function PostDetailModal({
-  post,
+  detail,
   currentUser,
   canParticipate,
   onClose,
-  onRefresh,
+  onDetailChange,
+  onReloadPost,
   onPostDeleted,
   onPointsChanged,
 }: PostDetailModalProps) {
   const [replyHtml, setReplyHtml] = useState("");
-  const [repliesRefreshKey, setRepliesRefreshKey] = useState(0);
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
-  const postAuthor = getAuthorDisplay(
-    post.authorId,
-    post.authorName,
-    post.authorAvatar,
-  );
+  const post = detail.post;
+  const replies = detail.replies;
 
-  const replies = useMemo(() => {
-    return getStoredReplies(post.forumId, post.id);
-  }, [post.forumId, post.id, repliesRefreshKey]);
-
-  function refreshReplies() {
-    setRepliesRefreshKey((currentValue) => currentValue + 1);
-    onRefresh();
-  }
-
-  function handleCreateReply(event: FormEvent<HTMLFormElement>) {
+  async function handleCreateReply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!currentUser) return;
@@ -1146,121 +1164,95 @@ function PostDetailModal({
       return;
     }
 
-    const cleanText = getPlainTextFromHtml(replyHtml);
+    const cleanHtml = sanitizeRichHtml(replyHtml);
+    const cleanText = getPlainTextFromHtml(cleanHtml);
 
     if (!cleanText) {
       showToast("Escribe una respuesta antes de publicar.", "warning");
       return;
     }
 
-    const newReply: ForumReply = {
-      id: createId("reply"),
-      forumId: post.forumId,
-      postId: post.id,
-      contentHtml: replyHtml,
-      authorId: currentUser.id,
-      authorName: currentUser.username,
-      createdAt: new Date().toISOString(),
-    };
-
     try {
-      saveStoredReplies(post.forumId, post.id, [...replies, newReply]);
-      updateUserForumPoints(currentUser.id, post.forumId, POINTS_BY_REPLY);
-    } catch (error) {
-      console.error("Error guardando respuesta:", error);
+      setIsSubmittingReply(true);
 
-      void Swal.fire({
-        icon: "error",
-        title: "No se pudo guardar",
-        text: "El navegador no pudo guardar la respuesta. Esto puede pasar si el almacenamiento local está lleno.",
-        confirmButtonColor: "#521f12",
-        background: "#f6ebd9",
-        color: "#521f12",
+      await createForumReplyRequest(post.id, {
+        contentHtml: cleanHtml,
       });
 
-      return;
-    }
+      const updatedDetail = await getForumPostDetailRequest(post.id);
 
-    setReplyHtml("");
-    refreshReplies();
-    showToast(`Respuesta publicada. +${POINTS_BY_REPLY} puntos.`, "success");
+      onDetailChange(updatedDetail);
+      onPointsChanged();
+      setReplyHtml("");
+
+      showToast(`Respuesta publicada. +${POINTS_BY_REPLY} puntos.`, "success");
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
+    } finally {
+      setIsSubmittingReply(false);
+    }
   }
 
   async function handleDeletePost() {
-    if (!currentUser || post.authorId !== currentUser.id) {
+    if (!post.currentUserCanDelete) {
       showToast("Solo puedes borrar publicaciones que tú escribiste.", "warning");
       return;
     }
 
     const confirmed = await confirmAction(
       "¿Eliminar publicación?",
-      "Se eliminará la publicación, sus respuestas y se descontarán los puntos correspondientes.",
+      "Se ocultará esta publicación. Las respuestas asociadas dejarán de mostrarse.",
     );
 
     if (!confirmed) return;
 
-    const posts = getStoredPosts(post.forumId);
+    try {
+      await deleteForumPostRequest(post.id);
 
-    saveStoredPosts(
-      post.forumId,
-      posts.filter((storedPost) => storedPost.id !== post.id),
-    );
-
-    updateUserForumPoints(post.authorId, post.forumId, -POINTS_BY_POST);
-
-    replies.forEach((reply) => {
-      updateUserForumPoints(reply.authorId, reply.forumId, -POINTS_BY_REPLY);
-    });
-
-    removeStoredReplies(post.forumId, post.id);
-
-    onPointsChanged();
-
-    showToast("Publicación eliminada y puntos descontados.", "success");
-    onPostDeleted();
+      showToast("Publicación eliminada.", "success");
+      onPostDeleted();
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
+    }
   }
 
-  async function handleDeleteReply(reply: ForumReply) {
-    if (!currentUser || reply.authorId !== currentUser.id) {
+  async function handleDeleteReply(reply: ApiForumReplyResponse) {
+    if (!reply.currentUserCanDelete) {
       showToast("Solo puedes borrar respuestas que tú escribiste.", "warning");
       return;
     }
 
     const confirmed = await confirmAction(
       "¿Eliminar respuesta?",
-      "Se eliminará la respuesta y se descontarán sus puntos.",
+      "Se ocultará esta respuesta de la publicación.",
     );
 
     if (!confirmed) return;
 
-    saveStoredReplies(
-      post.forumId,
-      post.id,
-      replies.filter((storedReply) => storedReply.id !== reply.id),
-    );
+    try {
+      await deleteForumReplyRequest(reply.id);
+      await onReloadPost(post.id);
+      onPointsChanged();
 
-    updateUserForumPoints(reply.authorId, reply.forumId, -POINTS_BY_REPLY);
-
-    refreshReplies();
-    onPointsChanged();
-
-    showToast("Respuesta eliminada y puntos descontados.", "success");
+      showToast("Respuesta eliminada.", "success");
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
+    }
   }
 
   return (
     <div className={styles.modalBackdrop} onClick={onClose}>
-      <article className={styles.modal} onClick={(event) => event.stopPropagation()}>
+      <article
+        className={styles.modal}
+        onClick={(event) => event.stopPropagation()}
+      >
         <header className={styles.modalHeader}>
           <div className={styles.modalAuthorRow}>
-            <ForumAvatar
-              name={postAuthor.name}
-              avatar={postAuthor.avatar}
-              size="sm"
-            />
+            <ForumAvatar author={post.author} size="sm" />
 
             <div>
               <span>
-                {postAuthor.name} · {formatDate(post.createdAt)}
+                {post.author.name} · {formatDate(post.createdAt)}
               </span>
 
               <h2>{post.title}</h2>
@@ -1274,10 +1266,10 @@ function PostDetailModal({
 
         <div
           className={styles.modalBody}
-          dangerouslySetInnerHTML={{ __html: post.contentHtml }}
+          dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(post.contentHtml) }}
         />
 
-        {currentUser?.id === post.authorId && (
+        {post.currentUserCanDelete && (
           <button
             type="button"
             className={styles.deleteButton}
@@ -1293,52 +1285,42 @@ function PostDetailModal({
 
           <div className={styles.repliesList}>
             {replies.length === 0 ? (
-  <p className={styles.emptyReplies}>
-    Todavía no hay respuestas en esta publicación.
-  </p>
-              ) : (
-                replies.map((reply) => {
-                  const replyAuthor = getAuthorDisplay(
-                    reply.authorId,
-                    reply.authorName,
-                    reply.authorAvatar,
-                  );
+              <p className={styles.emptyReplies}>
+                Todavía no hay respuestas en esta publicación.
+              </p>
+            ) : (
+              replies.map((reply) => (
+                <article key={reply.id} className={styles.replyCard}>
+                  <div className={styles.replyHeader}>
+                    <div className={styles.replyAuthorRow}>
+                      <ForumAvatar author={reply.author} size="sm" />
 
-                  return (
-                    <article key={reply.id} className={styles.replyCard}>
-                      <div className={styles.replyHeader}>
-                        <div className={styles.replyAuthorRow}>
-                          <ForumAvatar
-                            name={replyAuthor.name}
-                            avatar={replyAuthor.avatar}
-                            size="sm"
-                          />
-
-                          <div>
-                            <strong>{replyAuthor.name}</strong>
-                            <span>{formatDate(reply.createdAt)}</span>
-                          </div>
-                        </div>
-
-                        {currentUser?.id === reply.authorId && (
-                          <button
-                            type="button"
-                            onClick={() => void handleDeleteReply(reply)}
-                            aria-label="Eliminar respuesta"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        )}
+                      <div>
+                        <strong>{reply.author.name}</strong>
+                        <span>{formatDate(reply.createdAt)}</span>
                       </div>
+                    </div>
 
-                      <div
-                        className={styles.replyBody}
-                        dangerouslySetInnerHTML={{ __html: reply.contentHtml }}
-                      />
-                    </article>
-                  );
-                })
-              )}
+                    {reply.currentUserCanDelete && (
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteReply(reply)}
+                        aria-label="Eliminar respuesta"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div
+                    className={styles.replyBody}
+                    dangerouslySetInnerHTML={{
+                      __html: sanitizeRichHtml(reply.contentHtml),
+                    }}
+                  />
+                </article>
+              ))
+            )}
           </div>
         </section>
 
@@ -1356,16 +1338,16 @@ function PostDetailModal({
             <RichTextEditor
               value={replyHtml}
               onChange={setReplyHtml}
-              disabled={!canParticipate}
+              disabled={!canParticipate || isSubmittingReply}
               placeholder="Escribe tu respuesta..."
             />
 
             <button
               type="submit"
               className={styles.publishButton}
-              disabled={!canParticipate}
+              disabled={!canParticipate || isSubmittingReply}
             >
-              Responder
+              {isSubmittingReply ? "Publicando..." : "Responder"}
               <Send size={16} />
             </button>
           </form>

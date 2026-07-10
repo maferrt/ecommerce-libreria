@@ -160,3 +160,54 @@ export type ApiCheckoutRequest = {
   paymentMethod: string;
   deliveryNotes: string;
 };
+
+export type ApiForumAuthor = {
+  id: number;
+  name: string;
+  avatar: string | null;
+};
+
+export type ApiForumResponse = {
+  id: number;
+  slug: string;
+  name: string;
+  description: string;
+  coverImage: string | null;
+  subscribed: boolean;
+  points: number;
+  postCount: number;
+};
+
+export type ApiForumPostRequest = {
+  title: string;
+  contentHtml: string;
+};
+
+export type ApiForumReplyRequest = {
+  contentHtml: string;
+};
+
+export type ApiForumPostResponse = {
+  id: number;
+  forumSlug: string;
+  title: string;
+  contentHtml: string;
+  author: ApiForumAuthor;
+  replyCount: number;
+  currentUserCanDelete: boolean;
+  createdAt: string;
+};
+
+export type ApiForumReplyResponse = {
+  id: number;
+  postId: number;
+  contentHtml: string;
+  author: ApiForumAuthor;
+  currentUserCanDelete: boolean;
+  createdAt: string;
+};
+
+export type ApiForumPostDetailResponse = {
+  post: ApiForumPostResponse;
+  replies: ApiForumReplyResponse[];
+};

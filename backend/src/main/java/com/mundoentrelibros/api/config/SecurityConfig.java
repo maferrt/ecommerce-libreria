@@ -69,6 +69,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/orders").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/orders/**").authenticated()
 
+                        .requestMatchers(HttpMethod.GET, "/api/forums").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/forums/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/forums/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/forums/**").authenticated()
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(

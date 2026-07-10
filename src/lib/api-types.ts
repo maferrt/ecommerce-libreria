@@ -87,3 +87,25 @@ export type ApiWishlistResponse = {
   id: number;
   items: ApiWishlistItem[];
 };
+
+export type ApiCartItemType = "BOOK" | "SAGA";
+
+export type ApiCartItem = {
+  id: number;
+  type: ApiCartItemType;
+  bookId: number | null;
+  sagaId: string | null;
+  title: string;
+  author: string;
+  unitPrice: number;
+  quantity: number;
+  subtotal: number;
+  coverImage: string;
+};
+
+export type ApiCartResponse = {
+  id: number;
+  items: ApiCartItem[];
+  totalItems: number;
+  total: number;
+};

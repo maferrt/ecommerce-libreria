@@ -8,10 +8,23 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useAccount } from "@/context/AccountContext";
+import {
+  addCartBookRequest,
+  addCartSagaRequest,
+  clearCartRequest,
+  getCartRequest,
+  removeCartItemRequest,
+  updateCartItemQuantityRequest,
+} from "@/lib/cart-api";
+import type { ApiCartItem, ApiCartResponse } from "@/lib/api-types";
 import type { Book, Saga } from "@/types/book";
 import type { AddCartItemInput, CartItem } from "@/types/cart";
 
-const CART_STORAGE_KEY = "mel_cart_items";
+type CartActionResult = {
+  ok: boolean;
+  message: string;
+};
 
 type CartContextValue = {
   items: CartItem[];
@@ -21,46 +34,82 @@ type CartContextValue = {
   openCart: () => void;
   closeCart: () => void;
   toggleCart: () => void;
-  addItem: (item: AddCartItemInput) => void;
-  addBook: (book: Book) => void;
-  addSaga: (saga: Saga, includedBooksCount: number) => void;
-  incrementItem: (itemId: string) => void;
-  decrementItem: (itemId: string) => void;
-  removeItem: (itemId: string) => void;
-  clearCart: () => void;
+  addItem: (item: AddCartItemInput) => Promise<CartActionResult>;
+  addBook: (book: Book) => Promise<CartActionResult>;
+  addSaga: (
+    saga: Saga,
+    includedBooksCount: number,
+  ) => Promise<CartActionResult>;
+  incrementItem: (itemId: string) => Promise<CartActionResult>;
+  decrementItem: (itemId: string) => Promise<CartActionResult>;
+  removeItem: (itemId: string) => Promise<CartActionResult>;
+  clearCart: () => Promise<CartActionResult>;
+  refreshCart: () => Promise<void>;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-function safeReadCartItems() {
-  if (typeof window === "undefined") return [];
+function toCartItem(apiItem: ApiCartItem): CartItem {
+  const isSaga = apiItem.type === "SAGA";
 
-  const rawValue = window.localStorage.getItem(CART_STORAGE_KEY);
+  return {
+    id: String(apiItem.id),
+    type: isSaga ? "saga" : "book",
+    productId: isSaga ? apiItem.sagaId ?? "" : apiItem.bookId ?? 0,
+    title: apiItem.title,
+    subtitle: apiItem.author,
+    image: apiItem.coverImage,
+    price: Number(apiItem.unitPrice),
+    quantity: apiItem.quantity,
+    meta: isSaga ? "Paquete de saga" : "Libro",
+  };
+}
 
-  if (!rawValue) return [];
+function mapCartResponse(response: ApiCartResponse) {
+  return response.items.map(toCartItem);
+}
 
-  try {
-    return JSON.parse(rawValue) as CartItem[];
-  } catch {
-    return [];
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
   }
+
+  return "No se pudo actualizar el carrito.";
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const { currentUser, isAuthenticated } = useAccount();
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [hasLoadedCart, setHasLoadedCart] = useState(false);
 
   useEffect(() => {
-    setItems(safeReadCartItems());
-    setHasLoadedCart(true);
-  }, []);
+    let isMounted = true;
 
-  useEffect(() => {
-    if (!hasLoadedCart) return;
+    async function loadCart() {
+      if (!isAuthenticated || !currentUser) {
+        setItems([]);
+        return;
+      }
 
-    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
-  }, [items, hasLoadedCart]);
+      try {
+        const response = await getCartRequest();
+
+        if (!isMounted) return;
+
+        setItems(mapCartResponse(response));
+      } catch {
+        if (!isMounted) return;
+
+        setItems([]);
+      }
+    }
+
+    void loadCart();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser, isAuthenticated]);
 
   const totalItems = useMemo(() => {
     return items.reduce((total, item) => total + item.quantity, 0);
@@ -82,34 +131,50 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setIsCartOpen((currentValue) => !currentValue);
   }
 
-  function addItem(item: AddCartItemInput) {
-    setItems((currentItems) => {
-      const existingItem = currentItems.find(
-        (cartItem) => cartItem.id === item.id,
-      );
+  async function refreshCart() {
+    if (!isAuthenticated || !currentUser) {
+      setItems([]);
+      return;
+    }
 
-      if (existingItem) {
-        return currentItems.map((cartItem) =>
-          cartItem.id === item.id
-            ? { ...cartItem, quantity: cartItem.quantity + 1 }
-            : cartItem,
-        );
-      }
+    const response = await getCartRequest();
 
-      return [
-        ...currentItems,
-        {
-          ...item,
-          quantity: 1,
-        },
-      ];
-    });
+    setItems(mapCartResponse(response));
+  }
 
-    openCart();
+  async function addItem(
+    item: AddCartItemInput,
+  ): Promise<CartActionResult> {
+    if (!isAuthenticated || !currentUser) {
+      return {
+        ok: false,
+        message: "Inicia sesión para agregar productos al carrito.",
+      };
+    }
+
+    try {
+      const response =
+        item.type === "book"
+          ? await addCartBookRequest(Number(item.productId))
+          : await addCartSagaRequest(String(item.productId));
+
+      setItems(mapCartResponse(response));
+      openCart();
+
+      return {
+        ok: true,
+        message: "Producto agregado al carrito.",
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        message: getErrorMessage(error),
+      };
+    }
   }
 
   function addBook(book: Book) {
-    addItem({
+    return addItem({
       id: `book-${book.id}`,
       type: "book",
       productId: book.id,
@@ -122,7 +187,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   function addSaga(saga: Saga, includedBooksCount: number) {
-    addItem({
+    return addItem({
       id: `saga-${saga.id}`,
       type: "saga",
       productId: saga.id,
@@ -134,34 +199,139 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  function incrementItem(itemId: string) {
-    setItems((currentItems) =>
-      currentItems.map((item) =>
-        item.id === itemId ? { ...item, quantity: item.quantity + 1 } : item,
-      ),
-    );
+  async function incrementItem(itemId: string): Promise<CartActionResult> {
+    if (!isAuthenticated || !currentUser) {
+      return {
+        ok: false,
+        message: "Inicia sesión para modificar el carrito.",
+      };
+    }
+
+    const item = items.find((currentItem) => currentItem.id === itemId);
+
+    if (!item) {
+      return {
+        ok: false,
+        message: "Producto no encontrado en el carrito.",
+      };
+    }
+
+    try {
+      const response = await updateCartItemQuantityRequest(
+        Number(itemId),
+        item.quantity + 1,
+      );
+
+      setItems(mapCartResponse(response));
+
+      return {
+        ok: true,
+        message: "Cantidad actualizada.",
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        message: getErrorMessage(error),
+      };
+    }
   }
 
-  function decrementItem(itemId: string) {
-    setItems((currentItems) =>
-      currentItems
-        .map((item) =>
-          item.id === itemId
-            ? { ...item, quantity: item.quantity - 1 }
-            : item,
-        )
-        .filter((item) => item.quantity > 0),
-    );
+  async function decrementItem(itemId: string): Promise<CartActionResult> {
+    if (!isAuthenticated || !currentUser) {
+      return {
+        ok: false,
+        message: "Inicia sesión para modificar el carrito.",
+      };
+    }
+
+    const item = items.find((currentItem) => currentItem.id === itemId);
+
+    if (!item) {
+      return {
+        ok: false,
+        message: "Producto no encontrado en el carrito.",
+      };
+    }
+
+    try {
+      if (item.quantity <= 1) {
+        const response = await removeCartItemRequest(Number(itemId));
+
+        setItems(mapCartResponse(response));
+
+        return {
+          ok: true,
+          message: "Producto eliminado del carrito.",
+        };
+      }
+
+      const response = await updateCartItemQuantityRequest(
+        Number(itemId),
+        item.quantity - 1,
+      );
+
+      setItems(mapCartResponse(response));
+
+      return {
+        ok: true,
+        message: "Cantidad actualizada.",
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        message: getErrorMessage(error),
+      };
+    }
   }
 
-  function removeItem(itemId: string) {
-    setItems((currentItems) =>
-      currentItems.filter((item) => item.id !== itemId),
-    );
+  async function removeItem(itemId: string): Promise<CartActionResult> {
+    if (!isAuthenticated || !currentUser) {
+      return {
+        ok: false,
+        message: "Inicia sesión para modificar el carrito.",
+      };
+    }
+
+    try {
+      const response = await removeCartItemRequest(Number(itemId));
+
+      setItems(mapCartResponse(response));
+
+      return {
+        ok: true,
+        message: "Producto eliminado del carrito.",
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        message: getErrorMessage(error),
+      };
+    }
   }
 
-  function clearCart() {
-    setItems([]);
+  async function clearCart(): Promise<CartActionResult> {
+    if (!isAuthenticated || !currentUser) {
+      return {
+        ok: false,
+        message: "Inicia sesión para modificar el carrito.",
+      };
+    }
+
+    try {
+      const response = await clearCartRequest();
+
+      setItems(mapCartResponse(response));
+
+      return {
+        ok: true,
+        message: "Carrito vaciado correctamente.",
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        message: getErrorMessage(error),
+      };
+    }
   }
 
   const value: CartContextValue = {
@@ -179,6 +349,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     decrementItem,
     removeItem,
     clearCart,
+    refreshCart,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

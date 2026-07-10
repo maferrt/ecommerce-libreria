@@ -219,7 +219,20 @@ export function CatalogClient() {
 
     if (!canAddToCart) return;
 
-    addBook(book);
+    const result = await addBook(book);
+
+    if (!result.ok) {
+      await Swal.fire({
+        icon: "error",
+        title: "No se pudo agregar",
+        text: result.message,
+        confirmButtonColor: "#521f12",
+        background: "#f6ebd9",
+        color: "#521f12",
+      });
+
+      return;
+    }
 
     await Swal.fire({
       toast: true,
@@ -239,7 +252,20 @@ export function CatalogClient() {
 
     if (!canAddToCart) return;
 
-    addSaga(saga, saga.libros.length);
+    const result = await addSaga(saga, saga.libros.length);
+
+    if (!result.ok) {
+      await Swal.fire({
+        icon: "error",
+        title: "No se pudo agregar",
+        text: result.message,
+        confirmButtonColor: "#521f12",
+        background: "#f6ebd9",
+        color: "#521f12",
+      });
+
+      return;
+    }
 
     await Swal.fire({
       toast: true,

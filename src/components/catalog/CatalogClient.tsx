@@ -152,8 +152,12 @@ export function CatalogClient() {
     return catalogData.libros.filter((book) => saga.libros.includes(book.id));
   }
 
-  async function handleWishlistResult(result: WishlistToggleResult) {
-    if (!result.ok) {
+  async function handleWishlistResult(
+    result: WishlistToggleResult | Promise<WishlistToggleResult>,
+  ) {
+    const resolvedResult = await result;
+
+    if (!resolvedResult.ok) {
       const loginResult = await Swal.fire({
         icon: "info",
         title: "Inicia sesión",
@@ -177,8 +181,8 @@ export function CatalogClient() {
     await Swal.fire({
       toast: true,
       position: "top-end",
-      icon: result.saved ? "success" : "info",
-      title: result.message,
+      icon: resolvedResult.saved ? "success" : "info",
+      title: resolvedResult.message,
       showConfirmButton: false,
       timer: 1600,
       timerProgressBar: true,

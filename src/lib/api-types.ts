@@ -69,3 +69,21 @@ export type ApiProfileUpdateRequest = {
     references: string;
   };
 };
+
+export type ApiWishlistItemType = "BOOK" | "SAGA";
+
+export type ApiWishlistItem = {
+  id: number;
+  type: ApiWishlistItemType;
+  bookId: number | null;
+  sagaId: string | null;
+  title: string;
+  author: string;
+  price: number;
+  coverImage: string;
+};
+
+export type ApiWishlistResponse = {
+  id: number;
+  items: ApiWishlistItem[];
+};

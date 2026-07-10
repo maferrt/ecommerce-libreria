@@ -9,15 +9,18 @@ import {
   useState,
 } from "react";
 import { useAccount } from "@/context/AccountContext";
+import {
+  addWishlistBookRequest,
+  addWishlistSagaRequest,
+  getWishlistRequest,
+  removeWishlistItemRequest,
+} from "@/lib/wishlist-api";
+import type { ApiWishlistItem, ApiWishlistResponse } from "@/lib/api-types";
 import type { Book, Saga } from "@/types/book";
 import type {
   AddWishlistItemInput,
   WishlistItem,
 } from "@/types/wishlist";
-
-const WISHLIST_STORAGE_KEY = "mel_wishlist_items";
-
-type StoredWishlistItems = Record<string, WishlistItem[]>;
 
 export type WishlistToggleResult = {
   ok: boolean;
@@ -28,69 +31,94 @@ export type WishlistToggleResult = {
 type WishlistContextValue = {
   items: WishlistItem[];
   totalWishlistItems: number;
-  addItem: (item: AddWishlistItemInput) => WishlistToggleResult;
-  toggleItem: (item: AddWishlistItemInput) => WishlistToggleResult;
-  toggleBook: (book: Book) => WishlistToggleResult;
-  toggleSaga: (saga: Saga) => WishlistToggleResult;
+  addItem: (item: AddWishlistItemInput) => Promise<WishlistToggleResult>;
+  toggleItem: (item: AddWishlistItemInput) => Promise<WishlistToggleResult>;
+  toggleBook: (book: Book) => Promise<WishlistToggleResult>;
+  toggleSaga: (saga: Saga) => Promise<WishlistToggleResult>;
   isItemSaved: (itemId: string) => boolean;
   isBookSaved: (bookId: number) => boolean;
   isSagaSaved: (sagaId: string) => boolean;
-  removeItem: (itemId: string) => void;
-  clearWishlist: () => void;
+  removeItem: (itemId: string) => Promise<void>;
+  clearWishlist: () => Promise<void>;
 };
 
 const WishlistContext = createContext<WishlistContextValue | null>(null);
 
-function safeReadJson<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
+function toWishlistItem(apiItem: ApiWishlistItem): WishlistItem {
+  const isSaga = apiItem.type === "SAGA";
 
-  const rawValue = window.localStorage.getItem(key);
+  return {
+    id: String(apiItem.id),
+    type: isSaga ? "saga" : "book",
+    productId: isSaga ? apiItem.sagaId ?? "" : apiItem.bookId ?? "",
+    title: apiItem.title,
+    subtitle: apiItem.author,
+    image: apiItem.coverImage,
+    price: Number(apiItem.price),
+    meta: isSaga ? "Paquete de saga" : "Libro",
+    createdAt: new Date().toISOString(),
+  };
+}
 
-  if (!rawValue) return fallback;
+function mapWishlistResponse(response: ApiWishlistResponse) {
+  return response.items.map(toWishlistItem);
+}
 
-  try {
-    return JSON.parse(rawValue) as T;
-  } catch {
-    return fallback;
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
   }
-}
 
-function saveJson<T>(key: string, value: T) {
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
-
-function getStoredWishlistItems() {
-  return safeReadJson<StoredWishlistItems>(WISHLIST_STORAGE_KEY, {});
+  return "No se pudo actualizar tu wishlist.";
 }
 
 export function WishlistProvider({ children }: { children: ReactNode }) {
-  const { currentUser } = useAccount();
-  const [storedItems, setStoredItems] = useState<StoredWishlistItems>({});
-  const [hasLoadedWishlist, setHasLoadedWishlist] = useState(false);
+  const { currentUser, isAuthenticated } = useAccount();
+  const [items, setItems] = useState<WishlistItem[]>([]);
 
   useEffect(() => {
-    setStoredItems(getStoredWishlistItems());
-    setHasLoadedWishlist(true);
-  }, []);
+    let isMounted = true;
 
-  useEffect(() => {
-    if (!hasLoadedWishlist) return;
+    async function loadWishlist() {
+      if (!isAuthenticated || !currentUser) {
+        setItems([]);
+        return;
+      }
 
-    saveJson(WISHLIST_STORAGE_KEY, storedItems);
-  }, [storedItems, hasLoadedWishlist]);
+      try {
+        const response = await getWishlistRequest();
 
-  const items = useMemo(() => {
-    if (!currentUser) return [];
+        if (!isMounted) return;
 
-    return storedItems[currentUser.id] ?? [];
-  }, [currentUser, storedItems]);
+        setItems(mapWishlistResponse(response));
+      } catch {
+        if (!isMounted) return;
+
+        setItems([]);
+      }
+    }
+
+    void loadWishlist();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser, isAuthenticated]);
 
   const totalWishlistItems = items.length;
 
-  function getCurrentUserItems() {
-    if (!currentUser) return [];
+  const savedProducts = useMemo(() => {
+    return new Set(
+      items.map((item) => `${item.type}-${String(item.productId)}`),
+    );
+  }, [items]);
 
-    return storedItems[currentUser.id] ?? [];
+  function findSavedItem(item: AddWishlistItemInput) {
+    return items.find(
+      (currentItem) =>
+        currentItem.type === item.type &&
+        String(currentItem.productId) === String(item.productId),
+    );
   }
 
   function isItemSaved(itemId: string) {
@@ -98,15 +126,17 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   }
 
   function isBookSaved(bookId: number) {
-    return isItemSaved(`book-${bookId}`);
+    return savedProducts.has(`book-${bookId}`);
   }
 
   function isSagaSaved(sagaId: string) {
-    return isItemSaved(`saga-${sagaId}`);
+    return savedProducts.has(`saga-${sagaId}`);
   }
 
-  function addItem(item: AddWishlistItemInput): WishlistToggleResult {
-    if (!currentUser) {
+  async function addItem(
+    item: AddWishlistItemInput,
+  ): Promise<WishlistToggleResult> {
+    if (!isAuthenticated || !currentUser) {
       return {
         ok: false,
         saved: false,
@@ -114,12 +144,9 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    const currentItems = getCurrentUserItems();
-    const alreadySaved = currentItems.some(
-      (wishlistItem) => wishlistItem.id === item.id,
-    );
+    const savedItem = findSavedItem(item);
 
-    if (alreadySaved) {
+    if (savedItem) {
       return {
         ok: true,
         saved: true,
@@ -127,25 +154,32 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    const newItem: WishlistItem = {
-      ...item,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const response =
+        item.type === "book"
+          ? await addWishlistBookRequest(Number(item.productId))
+          : await addWishlistSagaRequest(String(item.productId));
 
-    setStoredItems((currentStoredItems) => ({
-      ...currentStoredItems,
-      [currentUser.id]: [...currentItems, newItem],
-    }));
+      setItems(mapWishlistResponse(response));
 
-    return {
-      ok: true,
-      saved: true,
-      message: "Producto guardado en wishlist.",
-    };
+      return {
+        ok: true,
+        saved: true,
+        message: "Producto guardado en wishlist.",
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        saved: false,
+        message: getErrorMessage(error),
+      };
+    }
   }
 
-  function toggleItem(item: AddWishlistItemInput): WishlistToggleResult {
-    if (!currentUser) {
+  async function toggleItem(
+    item: AddWishlistItemInput,
+  ): Promise<WishlistToggleResult> {
+    if (!isAuthenticated || !currentUser) {
       return {
         ok: false,
         saved: false,
@@ -153,41 +187,40 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    const currentItems = getCurrentUserItems();
-    const alreadySaved = currentItems.some(
-      (wishlistItem) => wishlistItem.id === item.id,
-    );
+    const savedItem = findSavedItem(item);
 
-    if (alreadySaved) {
-      setStoredItems((currentStoredItems) => ({
-        ...currentStoredItems,
-        [currentUser.id]: currentItems.filter(
-          (wishlistItem) => wishlistItem.id !== item.id,
-        ),
-      }));
+    try {
+      if (savedItem) {
+        const response = await removeWishlistItemRequest(Number(savedItem.id));
+
+        setItems(mapWishlistResponse(response));
+
+        return {
+          ok: true,
+          saved: false,
+          message: "Producto eliminado de wishlist.",
+        };
+      }
+
+      const response =
+        item.type === "book"
+          ? await addWishlistBookRequest(Number(item.productId))
+          : await addWishlistSagaRequest(String(item.productId));
+
+      setItems(mapWishlistResponse(response));
 
       return {
         ok: true,
-        saved: false,
-        message: "Producto eliminado de wishlist.",
+        saved: true,
+        message: "Producto guardado en wishlist.",
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        saved: Boolean(savedItem),
+        message: getErrorMessage(error),
       };
     }
-
-    const newItem: WishlistItem = {
-      ...item,
-      createdAt: new Date().toISOString(),
-    };
-
-    setStoredItems((currentStoredItems) => ({
-      ...currentStoredItems,
-      [currentUser.id]: [...currentItems, newItem],
-    }));
-
-    return {
-      ok: true,
-      saved: true,
-      message: "Producto guardado en wishlist.",
-    };
   }
 
   function toggleBook(book: Book) {
@@ -216,24 +249,30 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  function removeItem(itemId: string) {
-    if (!currentUser) return;
+  async function removeItem(itemId: string) {
+    if (!isAuthenticated || !currentUser) return;
 
-    const currentItems = getCurrentUserItems();
+    try {
+      const response = await removeWishlistItemRequest(Number(itemId));
 
-    setStoredItems((currentStoredItems) => ({
-      ...currentStoredItems,
-      [currentUser.id]: currentItems.filter((item) => item.id !== itemId),
-    }));
+      setItems(mapWishlistResponse(response));
+    } catch {
+      setItems((currentItems) =>
+        currentItems.filter((item) => item.id !== itemId),
+      );
+    }
   }
 
-  function clearWishlist() {
-    if (!currentUser) return;
+  async function clearWishlist() {
+    if (!isAuthenticated || !currentUser) return;
 
-    setStoredItems((currentStoredItems) => ({
-      ...currentStoredItems,
-      [currentUser.id]: [],
-    }));
+    const currentItems = [...items];
+
+    for (const item of currentItems) {
+      await removeWishlistItemRequest(Number(item.id));
+    }
+
+    setItems([]);
   }
 
   const value: WishlistContextValue = {

@@ -2,17 +2,18 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
+  ArrowLeft,
   ArrowRight,
   Minus,
   Plus,
   ShoppingBag,
   Trash2,
 } from "lucide-react";
-import { useCart } from "@/context/CartContext";
-import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { useAccount } from "@/context/AccountContext";
+import { useCart } from "@/context/CartContext";
 import { useOrders } from "@/context/OrderContext";
 import styles from "./CartClient.module.css";
 
@@ -34,29 +35,17 @@ export function CartClient() {
     decrementItem,
     removeItem,
     clearCart,
+    refreshCart,
   } = useCart();
 
   async function handleCheckout() {
-    if (items.length === 0) {
-      await Swal.fire({
-        icon: "info",
-        title: "Carrito vacío",
-        text: "Agrega libros o sagas antes de continuar.",
-        confirmButtonColor: "#521f12",
-        background: "#f6ebd9",
-        color: "#521f12",
-      });
-
-      return;
-    }
-
     if (!isAuthenticated) {
       const result = await Swal.fire({
         icon: "info",
         title: "Inicia sesión",
-        text: "Para generar un pedido necesitas iniciar sesión o crear una cuenta.",
-        showCancelButton: true,
+        text: "Para finalizar tu compra necesitas iniciar sesión.",
         confirmButtonText: "Ir a mi cuenta",
+        showCancelButton: true,
         cancelButtonText: "Cancelar",
         confirmButtonColor: "#521f12",
         cancelButtonColor: "#a0653d",
@@ -71,12 +60,99 @@ export function CartClient() {
       return;
     }
 
-    const result = createOrder(items, subtotal);
+    if (items.length === 0) {
+      await Swal.fire({
+        icon: "info",
+        title: "Tu carrito está vacío",
+        text: "Agrega al menos un libro o saga para generar un pedido.",
+        confirmButtonColor: "#521f12",
+        background: "#f6ebd9",
+        color: "#521f12",
+      });
+
+      return;
+    }
+
+    const confirmation = await Swal.fire({
+      icon: "question",
+      title: "¿Finalizar compra?",
+      text: "Se generará un pedido con los productos actuales del carrito.",
+      confirmButtonText: "Sí, generar pedido",
+      showCancelButton: true,
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#521f12",
+      cancelButtonColor: "#a0653d",
+      background: "#f6ebd9",
+      color: "#521f12",
+    });
+
+    if (!confirmation.isConfirmed) return;
+
+    const orderResult = await createOrder(
+      "Simulado",
+      "Pedido generado desde el carrito web.",
+    );
+
+    if (!orderResult.ok) {
+      await Swal.fire({
+        icon: "error",
+        title: "No se pudo generar el pedido",
+        text: orderResult.message,
+        confirmButtonColor: "#521f12",
+        background: "#f6ebd9",
+        color: "#521f12",
+      });
+
+      return;
+    }
+
+    await refreshCart();
+
+    const successResult = await Swal.fire({
+      icon: "success",
+      title: "Pedido generado",
+      text: orderResult.message,
+      confirmButtonText: "Ver mis pedidos",
+      showCancelButton: true,
+      cancelButtonText: "Seguir comprando",
+      confirmButtonColor: "#521f12",
+      cancelButtonColor: "#a0653d",
+      background: "#f6ebd9",
+      color: "#521f12",
+    });
+
+    if (successResult.isConfirmed) {
+      router.push("/cuenta/pedidos");
+      return;
+    }
+
+    router.push("/catalogo");
+  }
+
+  async function handleClearCart() {
+    if (items.length === 0) return;
+
+    const confirmation = await Swal.fire({
+      icon: "warning",
+      title: "¿Vaciar carrito?",
+      text: "Se eliminarán todos los productos del carrito.",
+      confirmButtonText: "Sí, vaciar",
+      showCancelButton: true,
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#521f12",
+      cancelButtonColor: "#a0653d",
+      background: "#f6ebd9",
+      color: "#521f12",
+    });
+
+    if (!confirmation.isConfirmed) return;
+
+    const result = await clearCart();
 
     if (!result.ok) {
       await Swal.fire({
-        icon: "warning",
-        title: "No se pudo generar el pedido",
+        icon: "error",
+        title: "No se pudo vaciar",
         text: result.message,
         confirmButtonColor: "#521f12",
         background: "#f6ebd9",
@@ -86,62 +162,62 @@ export function CartClient() {
       return;
     }
 
-    clearCart();
-
     await Swal.fire({
+      toast: true,
+      position: "top-end",
       icon: "success",
-      title: "Pedido generado",
-      html: `
-        <p>${result.message}</p>
-        <p><strong>ID:</strong> ${result.orderId}</p>
-      `,
-      confirmButtonText: "Ver mi cuenta",
-      confirmButtonColor: "#521f12",
+      title: result.message,
+      showConfirmButton: false,
+      timer: 1600,
+      timerProgressBar: true,
       background: "#f6ebd9",
       color: "#521f12",
     });
-
-    router.push("/cuenta");
   }
 
   return (
     <main className={styles.page}>
       <header className={styles.hero}>
-        <span className={styles.eyebrow}>Carrito</span>
+        <Link href="/catalogo" className={styles.backLink}>
+          <ArrowLeft size={17} />
+          Volver al catálogo
+        </Link>
 
-        <h1>Tu carrito de compras</h1>
+        <span>Carrito de compra</span>
+
+        <h1>Revisa tus próximas lecturas</h1>
 
         <p>
-          Revisa tus libros y paquetes de saga antes de continuar con tu compra.
+          Ajusta cantidades, elimina productos o finaliza tu compra para generar
+          un pedido.
         </p>
       </header>
 
       {items.length === 0 ? (
         <section className={styles.emptyState}>
           <div className={styles.emptyIcon}>
-            <ShoppingBag size={40} />
+            <ShoppingBag size={42} />
           </div>
 
           <h2>Tu carrito está vacío</h2>
 
-          <p>Agrega libros o sagas desde el catálogo para que aparezcan aquí.</p>
+          <p>
+            Explora el catálogo y agrega libros o sagas para comenzar tu compra.
+          </p>
 
-          <Link href="/catalogo">
-            Explorar catálogo
-            <ArrowRight size={17} />
-          </Link>
+          <Link href="/catalogo">Explorar catálogo</Link>
         </section>
       ) : (
         <section className={styles.cartLayout}>
-          <div className={styles.itemsPanel}>
+          <div className={styles.itemsList}>
             {items.map((item) => (
-              <article key={item.id} className={styles.itemCard}>
+              <article key={item.id} className={styles.cartItem}>
                 <div className={styles.itemImage}>
                   <Image
                     src={item.image}
                     alt={item.title}
-                    width={120}
-                    height={170}
+                    width={110}
+                    height={160}
                   />
                 </div>
 
@@ -163,7 +239,7 @@ export function CartClient() {
                   <div className={styles.quantityControl}>
                     <button
                       type="button"
-                      onClick={() => decrementItem(item.id)}
+                      onClick={() => void decrementItem(item.id)}
                       aria-label="Reducir cantidad"
                     >
                       <Minus size={16} />
@@ -173,7 +249,7 @@ export function CartClient() {
 
                     <button
                       type="button"
-                      onClick={() => incrementItem(item.id)}
+                      onClick={() => void incrementItem(item.id)}
                       aria-label="Aumentar cantidad"
                     >
                       <Plus size={16} />
@@ -183,7 +259,7 @@ export function CartClient() {
                   <button
                     type="button"
                     className={styles.removeButton}
-                    onClick={() => removeItem(item.id)}
+                    onClick={() => void removeItem(item.id)}
                   >
                     <Trash2 size={16} />
                     Eliminar
@@ -228,7 +304,7 @@ export function CartClient() {
             <button
               type="button"
               className={styles.clearButton}
-              onClick={clearCart}
+              onClick={() => void handleClearCart()}
             >
               Vaciar carrito
             </button>

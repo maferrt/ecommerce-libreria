@@ -9,12 +9,17 @@ import {
   useState,
 } from "react";
 import { useAccount } from "@/context/AccountContext";
+import {
+  checkoutRequest,
+  getOrdersRequest,
+} from "@/lib/order-api";
+import type {
+  ApiOrderItem,
+  ApiOrderResponse,
+  ApiOrderStatus,
+} from "@/lib/api-types";
 import type { CartItem } from "@/types/cart";
-import type { UserOrder } from "@/types/order";
-
-const ORDERS_STORAGE_KEY = "mel_orders";
-
-type StoredOrders = Record<string, UserOrder[]>;
+import type { OrderStatus, UserOrder } from "@/types/order";
 
 type CreateOrderResult = {
   ok: boolean;
@@ -25,119 +30,163 @@ type CreateOrderResult = {
 type OrderContextValue = {
   orders: UserOrder[];
   totalOrders: number;
-  createOrder: (items: CartItem[], paidAmount: number) => CreateOrderResult;
+  createOrder: (
+    paymentMethod?: string,
+    deliveryNotes?: string,
+  ) => Promise<CreateOrderResult>;
   clearOrders: () => void;
+  refreshOrders: () => Promise<void>;
 };
 
 const OrderContext = createContext<OrderContextValue | null>(null);
 
-function safeReadJson<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
+function mapOrderStatus(status: ApiOrderStatus): OrderStatus {
+  const statusMap: Record<ApiOrderStatus, OrderStatus> = {
+    CREATED: "Pendiente",
+    PAID: "Pagado",
+    PREPARING: "En preparación",
+    SHIPPED: "Enviado",
+    DELIVERED: "Entregado",
+    CANCELLED: "Cancelado",
+  };
 
-  const rawValue = window.localStorage.getItem(key);
+  return statusMap[status] ?? "Pendiente";
+}
 
-  if (!rawValue) return fallback;
+function toCartItem(apiItem: ApiOrderItem): CartItem {
+  const isSaga = apiItem.type === "SAGA";
 
-  try {
-    return JSON.parse(rawValue) as T;
-  } catch {
-    return fallback;
+  return {
+    id: String(apiItem.id),
+    type: isSaga ? "saga" : "book",
+    productId: isSaga ? apiItem.sagaId ?? "" : apiItem.bookId ?? 0,
+    title: apiItem.title,
+    subtitle: apiItem.author,
+    image: apiItem.coverImage,
+    price: Number(apiItem.unitPrice),
+    quantity: apiItem.quantity,
+    meta: isSaga ? "Paquete de saga" : "Libro",
+  };
+}
+
+function toUserOrder(apiOrder: ApiOrderResponse): UserOrder {
+  return {
+    id: String(apiOrder.id),
+    orderNumber: apiOrder.orderNumber,
+    userId: "",
+    createdAt: apiOrder.createdAt,
+    status: mapOrderStatus(apiOrder.status),
+    items: apiOrder.items.map(toCartItem),
+    totalItems: apiOrder.totalItems,
+    paidAmount: Number(apiOrder.total),
+    paymentMethod: apiOrder.paymentMethod,
+    deliveryNotes: apiOrder.deliveryNotes,
+    shippingAddress: {
+      street: apiOrder.shippingAddress.street,
+      exteriorNumber: apiOrder.shippingAddress.exteriorNumber,
+      interiorNumber: apiOrder.shippingAddress.interiorNumber,
+      neighborhood: apiOrder.shippingAddress.neighborhood,
+      city: apiOrder.shippingAddress.city,
+      state: apiOrder.shippingAddress.state,
+      zipCode: apiOrder.shippingAddress.zipCode,
+      country: apiOrder.shippingAddress.country,
+      references: apiOrder.shippingAddress.references,
+    },
+  };
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
   }
-}
 
-function saveJson<T>(key: string, value: T) {
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
-
-function createId(prefix: string) {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}-${crypto.randomUUID()}`;
-  }
-
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function getStoredOrders() {
-  return safeReadJson<StoredOrders>(ORDERS_STORAGE_KEY, {});
+  return "No se pudo generar el pedido.";
 }
 
 export function OrderProvider({ children }: { children: ReactNode }) {
-  const { currentUser } = useAccount();
-  const [storedOrders, setStoredOrders] = useState<StoredOrders>({});
-  const [hasLoadedOrders, setHasLoadedOrders] = useState(false);
+  const { currentUser, isAuthenticated } = useAccount();
+  const [orders, setOrders] = useState<UserOrder[]>([]);
 
   useEffect(() => {
-    setStoredOrders(getStoredOrders());
-    setHasLoadedOrders(true);
-  }, []);
+    let isMounted = true;
 
-  useEffect(() => {
-    if (!hasLoadedOrders) return;
+    async function loadOrders() {
+      if (!isAuthenticated || !currentUser) {
+        setOrders([]);
+        return;
+      }
 
-    saveJson(ORDERS_STORAGE_KEY, storedOrders);
-  }, [storedOrders, hasLoadedOrders]);
+      try {
+        const response = await getOrdersRequest();
 
-  const orders = useMemo(() => {
-    if (!currentUser) return [];
+        if (!isMounted) return;
 
-    return (storedOrders[currentUser.id] ?? []).sort(
-      (firstOrder, secondOrder) =>
-        new Date(secondOrder.createdAt).getTime() -
-        new Date(firstOrder.createdAt).getTime(),
-    );
-  }, [currentUser, storedOrders]);
+        setOrders(response.map(toUserOrder));
+      } catch {
+        if (!isMounted) return;
 
-  const totalOrders = orders.length;
+        setOrders([]);
+      }
+    }
 
-  function createOrder(
-    items: CartItem[],
-    paidAmount: number,
-  ): CreateOrderResult {
-    if (!currentUser) {
+    void loadOrders();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser, isAuthenticated]);
+
+  const totalOrders = useMemo(() => {
+    return orders.length;
+  }, [orders]);
+
+  async function refreshOrders() {
+    if (!isAuthenticated || !currentUser) {
+      setOrders([]);
+      return;
+    }
+
+    const response = await getOrdersRequest();
+
+    setOrders(response.map(toUserOrder));
+  }
+
+  async function createOrder(
+    paymentMethod = "Simulado",
+    deliveryNotes = "",
+  ): Promise<CreateOrderResult> {
+    if (!isAuthenticated || !currentUser) {
       return {
         ok: false,
         message: "Inicia sesión para generar un pedido.",
       };
     }
 
-    if (items.length === 0) {
+    try {
+      const response = await checkoutRequest({
+        paymentMethod,
+        deliveryNotes,
+      });
+
+      const newOrder = toUserOrder(response);
+
+      setOrders((currentOrders) => [newOrder, ...currentOrders]);
+
+      return {
+        ok: true,
+        message: "Pedido generado correctamente.",
+        orderId: newOrder.id,
+      };
+    } catch (error) {
       return {
         ok: false,
-        message: "Tu carrito está vacío.",
+        message: getErrorMessage(error),
       };
     }
-
-    const newOrder: UserOrder = {
-      id: createId("order"),
-      userId: currentUser.id,
-      createdAt: new Date().toISOString(),
-      status: "Pagado",
-      items: items.map((item) => ({ ...item })),
-      totalItems: items.reduce((total, item) => total + item.quantity, 0),
-      paidAmount,
-    };
-
-    const currentOrders = storedOrders[currentUser.id] ?? [];
-
-    setStoredOrders((currentStoredOrders) => ({
-      ...currentStoredOrders,
-      [currentUser.id]: [newOrder, ...currentOrders],
-    }));
-
-    return {
-      ok: true,
-      message: "Pedido generado correctamente.",
-      orderId: newOrder.id,
-    };
   }
 
   function clearOrders() {
-    if (!currentUser) return;
-
-    setStoredOrders((currentStoredOrders) => ({
-      ...currentStoredOrders,
-      [currentUser.id]: [],
-    }));
+    setOrders([]);
   }
 
   const value: OrderContextValue = {
@@ -145,6 +194,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     totalOrders,
     createOrder,
     clearOrders,
+    refreshOrders,
   };
 
   return (

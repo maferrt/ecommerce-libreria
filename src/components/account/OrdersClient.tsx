@@ -28,7 +28,11 @@ function formatOrderDate(date: string) {
   }).format(new Date(date));
 }
 
-function getShortOrderId(orderId: string) {
+function getShortOrderId(orderId: string, orderNumber?: string) {
+  if (orderNumber) {
+    return orderNumber;
+  }
+
   return orderId.replace("order-", "").slice(0, 8).toUpperCase();
 }
 
@@ -61,28 +65,31 @@ export function OrdersClient() {
   return (
     <main className={styles.page}>
       <header className={styles.hero}>
-        <div>
-          <Link href="/cuenta" className={styles.backLink}>
-            <ArrowLeft size={17} />
-            Volver a mi cuenta
-          </Link>
+        <Link href="/cuenta" className={styles.backLink}>
+          <ArrowLeft size={17} />
+          Volver a mi cuenta
+        </Link>
 
-          <span className={styles.eyebrow}>Historial de pedidos</span>
+        <span>Historial de pedidos</span>
 
-          <h1>Todos tus pedidos</h1>
+        <h1>Mis pedidos</h1>
 
-          <p>
-            Consulta el historial completo de compras simuladas realizadas desde
-            tu carrito.
-          </p>
-        </div>
-
-        <div className={styles.heroStats}>
-          <PackageCheck size={34} />
-          <strong>{totalOrders}</strong>
-          <span>pedido(s)</span>
-        </div>
+        <p>
+          Consulta los pedidos que has generado y revisa los productos incluidos
+          en cada compra.
+        </p>
       </header>
+
+      <section className={styles.summaryCard}>
+        <div className={styles.summaryIcon}>
+          <PackageCheck size={32} />
+        </div>
+
+        <div>
+          <span>Total de pedidos</span>
+          <strong>{totalOrders}</strong>
+        </div>
+      </section>
 
       {orders.length === 0 ? (
         <section className={styles.emptyState}>
@@ -93,8 +100,7 @@ export function OrdersClient() {
           <h2>Aún no tienes pedidos</h2>
 
           <p>
-            Cuando finalices una compra desde el carrito, aparecerá aquí tu
-            historial completo.
+            Cuando finalices una compra, tus pedidos aparecerán aquí.
           </p>
 
           <Link href="/catalogo">Explorar catálogo</Link>
@@ -116,8 +122,12 @@ export function OrdersClient() {
                   }
                 >
                   <div>
-                    <span>Pedido #{getShortOrderId(order.id)}</span>
+                    <span>
+                      Pedido #{getShortOrderId(order.id, order.orderNumber)}
+                    </span>
+
                     <h2>{currencyFormatter.format(order.paidAmount)}</h2>
+
                     <p>{formatOrderDate(order.createdAt)}</p>
                   </div>
 
@@ -129,8 +139,15 @@ export function OrdersClient() {
 
                 <div className={styles.orderMetaGrid}>
                   <div>
-                    <span>ID completo</span>
+                    <span>ID interno</span>
                     <strong>{order.id}</strong>
+                  </div>
+
+                  <div>
+                    <span>Número de pedido</span>
+                    <strong>
+                      {getShortOrderId(order.id, order.orderNumber)}
+                    </strong>
                   </div>
 
                   <div>
@@ -151,6 +168,11 @@ export function OrdersClient() {
                   <div>
                     <span>Estatus</span>
                     <strong>{order.status}</strong>
+                  </div>
+
+                  <div>
+                    <span>Método de pago</span>
+                    <strong>{order.paymentMethod || "Simulado"}</strong>
                   </div>
                 </div>
 
@@ -193,6 +215,37 @@ export function OrdersClient() {
                           </div>
                         </div>
                       ))}
+                    </div>
+
+                    <div className={styles.shippingCard}>
+                      <h3>Dirección de envío</h3>
+
+                      <p>
+                        {order.shippingAddress.street}{" "}
+                        {order.shippingAddress.exteriorNumber}
+                        {order.shippingAddress.interiorNumber
+                          ? ` Int. ${order.shippingAddress.interiorNumber}`
+                          : ""}
+                      </p>
+
+                      <p>
+                        {order.shippingAddress.neighborhood},{" "}
+                        {order.shippingAddress.city},{" "}
+                        {order.shippingAddress.state},{" "}
+                        {order.shippingAddress.zipCode}
+                      </p>
+
+                      <p>{order.shippingAddress.country}</p>
+
+                      {order.shippingAddress.references && (
+                        <small>
+                          Referencias: {order.shippingAddress.references}
+                        </small>
+                      )}
+
+                      {order.deliveryNotes && (
+                        <small>Notas: {order.deliveryNotes}</small>
+                      )}
                     </div>
                   </section>
                 )}

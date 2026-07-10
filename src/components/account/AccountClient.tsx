@@ -1,39 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import {
-  BookOpen,
-  CheckCircle2,
-  Edit3,
+  BookHeart,
   Heart,
-  ImagePlus,
-  Lock,
   LogOut,
-  Mail,
+  PackageCheck,
   Save,
   ShoppingBag,
   Sparkles,
   Trophy,
   UserRound,
 } from "lucide-react";
-import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { useAccount } from "@/context/AccountContext";
-import { useWishlist } from "@/context/WishlistContext";
-import { useCart } from "@/context/CartContext";
 import { useOrders } from "@/context/OrderContext";
-import type { WishlistItem } from "@/types/wishlist";
+import { useWishlist } from "@/context/WishlistContext";
 import type {
   AccountLoginInput,
   AccountRegisterInput,
   ReaderStatus,
-  UserAddress,
   UserProfile,
 } from "@/types/account";
 import styles from "./AccountClient.module.css";
 
-const readerStatusOptions: ReaderStatus[] = [
+const readerStatuses: ReaderStatus[] = [
   "Leyendo ahora",
   "Buscando nueva lectura",
   "En pausa lectora",
@@ -41,28 +33,6 @@ const readerStatusOptions: ReaderStatus[] = [
   "Modo terror activado",
   "Releyendo favoritos",
 ];
-
-const genreOptions = [
-  "Novela Juvenil",
-  "Fantasía",
-  "Terror",
-  "Desarrollo personal",
-  "Ciencia Ficción",
-  "Educación financiera",
-  "Psicología",
-];
-
-const initialLoginForm: AccountLoginInput = {
-  email: "",
-  password: "",
-};
-
-const initialRegisterForm: AccountRegisterInput = {
-  name: "",
-  email: "",
-  password: "",
-  confirmPassword: "",
-};
 
 const currencyFormatter = new Intl.NumberFormat("es-MX", {
   style: "currency",
@@ -74,40 +44,93 @@ function formatOrderDate(date: string) {
     day: "2-digit",
     month: "short",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   }).format(new Date(date));
 }
 
-function getShortOrderId(orderId: string) {
+function getShortOrderId(orderId: string, orderNumber?: string) {
+  if (orderNumber) {
+    return orderNumber;
+  }
+
   return orderId.replace("order-", "").slice(0, 8).toUpperCase();
 }
 
-export function AccountClient() {
-  const { isAuthenticated } = useAccount();
-
-  if (!isAuthenticated) {
-    return <AuthPanel />;
-  }
-
-  return <AccountDashboard />;
+function createEmptyProfile(userId: string, name: string): UserProfile {
+  return {
+    userId,
+    displayName: name,
+    avatar: null,
+    currentReading: "",
+    readerStatus: "Buscando nueva lectura",
+    bio: "Lector/a de Mundo Entre Libros.",
+    favoriteGenre: "Novela Juvenil",
+    address: {
+      street: "",
+      exteriorNumber: "",
+      interiorNumber: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "México",
+      references: "",
+    },
+  };
 }
 
-function AuthPanel() {
-  const { loginUser, registerUser } = useAccount();
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [loginForm, setLoginForm] = useState<AccountLoginInput>(initialLoginForm);
-  const [registerForm, setRegisterForm] =
-    useState<AccountRegisterInput>(initialRegisterForm);
+export function AccountClient() {
+  const {
+    currentUser,
+    currentProfile,
+    isAuthenticated,
+    isLoadingAccount,
+    totalForumPoints,
+    registerUser,
+    loginUser,
+    logoutUser,
+    updateProfile,
+  } = useAccount();
 
-  async function handleLogin(event: FormEvent<HTMLFormElement>) {
+  const { orders, totalOrders } = useOrders();
+  const { items: wishlistItems, totalWishlistItems, removeItem } = useWishlist();
+
+  const [loginForm, setLoginForm] = useState<AccountLoginInput>({
+    email: "",
+    password: "",
+  });
+
+  const [registerForm, setRegisterForm] = useState<AccountRegisterInput>({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  const [profileForm, setProfileForm] = useState<UserProfile | null>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [activeAuthTab, setActiveAuthTab] = useState<"login" | "register">(
+    "login",
+  );
+
+  useEffect(() => {
+    if (currentProfile) {
+      setProfileForm(currentProfile);
+      return;
+    }
+
+    if (currentUser) {
+      setProfileForm(createEmptyProfile(currentUser.id, currentUser.name));
+    }
+  }, [currentProfile, currentUser]);
+
+  async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const result = await loginUser(loginForm);
 
     if (!result.ok) {
       await Swal.fire({
-        icon: "warning",
+        icon: "error",
         title: "No se pudo iniciar sesión",
         text: result.message,
         confirmButtonColor: "#521f12",
@@ -118,26 +141,29 @@ function AuthPanel() {
       return;
     }
 
-    setLoginForm(initialLoginForm);
-
     await Swal.fire({
       icon: "success",
-      title: "Bienvenida/o",
+      title: "Sesión iniciada",
       text: result.message,
       confirmButtonColor: "#521f12",
       background: "#f6ebd9",
       color: "#521f12",
     });
+
+    setLoginForm({
+      email: "",
+      password: "",
+    });
   }
 
-  async function handleRegister(event: FormEvent<HTMLFormElement>) {
+  async function handleRegister(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const result = await registerUser(registerForm);
 
     if (!result.ok) {
       await Swal.fire({
-        icon: "warning",
+        icon: "error",
         title: "No se pudo crear la cuenta",
         text: result.message,
         confirmButtonColor: "#521f12",
@@ -148,8 +174,6 @@ function AuthPanel() {
       return;
     }
 
-    setRegisterForm(initialRegisterForm);
-
     await Swal.fire({
       icon: "success",
       title: "Cuenta creada",
@@ -158,273 +182,19 @@ function AuthPanel() {
       background: "#f6ebd9",
       color: "#521f12",
     });
-  }
 
-  return (
-    <main className={styles.page}>
-      <section className={styles.authHero}>
-        <div>
-          <span className={styles.eyebrow}>
-            <Sparkles size={16} />
-            Mi cuenta
-          </span>
-
-          <h1>Tu espacio lector en Mundo Entre Libros</h1>
-
-          <p>
-            Crea una cuenta para personalizar tu perfil, guardar favoritos,
-            consultar pedidos y acumular puntos dentro de los foros.
-          </p>
-        </div>
-      </section>
-
-      <section className={styles.authLayout}>
-        <aside className={styles.authSideCard}>
-          <h2>¿Qué podrás hacer?</h2>
-
-          <ul>
-            <li>
-              <CheckCircle2 size={17} />
-              Personalizar tu perfil lector
-            </li>
-            <li>
-              <CheckCircle2 size={17} />
-              Guardar libros en wishlist
-            </li>
-            <li>
-              <CheckCircle2 size={17} />
-              Ver pedidos simulados
-            </li>
-            <li>
-              <CheckCircle2 size={17} />
-              Consultar puntos de foros
-            </li>
-          </ul>
-        </aside>
-
-        <section className={styles.authCard}>
-          <div className={styles.authTabs}>
-            <button
-              type="button"
-              className={mode === "login" ? styles.activeTab : ""}
-              onClick={() => setMode("login")}
-            >
-              Iniciar sesión
-            </button>
-
-            <button
-              type="button"
-              className={mode === "register" ? styles.activeTab : ""}
-              onClick={() => setMode("register")}
-            >
-              Crear cuenta
-            </button>
-          </div>
-
-          {mode === "login" ? (
-            <form className={styles.form} onSubmit={handleLogin}>
-              <div className={styles.formHeader}>
-                <h2>Iniciar sesión <UserRound size={32} /> </h2>
-                <p>Entra con el correo y contraseña que registraste.</p>
-              </div>
-
-              <label className={styles.field}>
-                <span>Correo electrónico</span>
-                <div className={styles.inputWithIcon}>
-                  <Mail size={17} />
-                  <input
-                    type="email"
-                    value={loginForm.email}
-                    onChange={(event) =>
-                      setLoginForm((currentForm) => ({
-                        ...currentForm,
-                        email: event.target.value,
-                      }))
-                    }
-                    placeholder="correo@ejemplo.com"
-                    autoComplete="email"
-                  />
-                </div>
-              </label>
-
-              <label className={styles.field}>
-                <span>Contraseña</span>
-                <div className={styles.inputWithIcon}>
-                  <Lock size={17} />
-                  <input
-                    type="password"
-                    value={loginForm.password}
-                    onChange={(event) =>
-                      setLoginForm((currentForm) => ({
-                        ...currentForm,
-                        password: event.target.value,
-                      }))
-                    }
-                    placeholder="Tu contraseña"
-                    autoComplete="current-password"
-                  />
-                </div>
-              </label>
-
-              <button type="submit" className={styles.submitButton}>
-                Entrar a mi cuenta
-              </button>
-            </form>
-          ) : (
-            <form className={styles.form} onSubmit={handleRegister}>
-              <div className={styles.formHeader}>
-                <h2>Crear cuenta</h2>
-                <p>Regístrate para crear tu perfil lector.</p>
-              </div>
-
-              <label className={styles.field}>
-                <span>Nombre</span>
-                <div className={styles.inputWithIcon}>
-                  <UserRound size={17} />
-                  <input
-                    type="text"
-                    value={registerForm.name}
-                    onChange={(event) =>
-                      setRegisterForm((currentForm) => ({
-                        ...currentForm,
-                        name: event.target.value,
-                      }))
-                    }
-                    placeholder="Tu nombre"
-                    autoComplete="name"
-                  />
-                </div>
-              </label>
-
-              <label className={styles.field}>
-                <span>Correo electrónico</span>
-                <div className={styles.inputWithIcon}>
-                  <Mail size={17} />
-                  <input
-                    type="email"
-                    value={registerForm.email}
-                    onChange={(event) =>
-                      setRegisterForm((currentForm) => ({
-                        ...currentForm,
-                        email: event.target.value,
-                      }))
-                    }
-                    placeholder="correo@ejemplo.com"
-                    autoComplete="email"
-                  />
-                </div>
-              </label>
-
-              <div className={styles.fieldGrid}>
-                <label className={styles.field}>
-                  <span>Contraseña</span>
-                  <div className={styles.inputWithIcon}>
-                    <Lock size={17} />
-                    <input
-                      type="password"
-                      value={registerForm.password}
-                      onChange={(event) =>
-                        setRegisterForm((currentForm) => ({
-                          ...currentForm,
-                          password: event.target.value,
-                        }))
-                      }
-                      placeholder="Mínimo 6 caracteres"
-                      autoComplete="new-password"
-                    />
-                  </div>
-                </label>
-
-                <label className={styles.field}>
-                  <span>Confirmar contraseña</span>
-                  <div className={styles.inputWithIcon}>
-                    <Lock size={17} />
-                    <input
-                      type="password"
-                      value={registerForm.confirmPassword}
-                      onChange={(event) =>
-                        setRegisterForm((currentForm) => ({
-                          ...currentForm,
-                          confirmPassword: event.target.value,
-                        }))
-                      }
-                      placeholder="Repite contraseña"
-                      autoComplete="new-password"
-                    />
-                  </div>
-                </label>
-              </div>
-
-              <button type="submit" className={styles.submitButton}>
-                Crear mi cuenta
-              </button>
-            </form>
-          )}
-        </section>
-      </section>
-    </main>
-  );
-}
-
-function AccountDashboard() {
-  const {
-    currentUser,
-    currentProfile,
-    totalForumPoints,
-    logoutUser,
-    updateProfile,
-  } = useAccount();
-  const { addItem: addCartItem } = useCart();
-
-function handleAddWishlistItemToCart(item: WishlistItem) {
-  addCartItem({
-    id: item.id,
-    type: item.type,
-    productId: item.productId,
-    title: item.title,
-    subtitle: item.subtitle,
-    image: item.image,
-    price: item.price,
-    meta: item.meta,
-  });
-}
-  const {
-  items: wishlistItems,
-  totalWishlistItems,
-  removeItem: removeWishlistItem,
-} = useWishlist();
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState<UserProfile | null>(null);
-
-  const { orders, totalOrders } = useOrders();
-
-  useEffect(() => {
-    if (!currentProfile) return;
-
-    setProfileForm(currentProfile);
-  }, [currentProfile]);
-
-  if (!currentUser || !currentProfile || !profileForm) return null;
-
-  async function handleLogout() {
-    logoutUser();
-
-    await Swal.fire({
-      icon: "info",
-      title: "Sesión cerrada",
-      text: "Has salido de tu cuenta.",
-      confirmButtonColor: "#521f12",
-      background: "#f6ebd9",
-      color: "#521f12",
+    setRegisterForm({
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
     });
   }
 
-  async function handleSaveProfile(event: FormEvent<HTMLFormElement>) {
+  async function handleSaveProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!profileForm) {
-      return;
-    }
+    if (!profileForm) return;
 
     const result = await updateProfile(profileForm);
 
@@ -453,506 +223,561 @@ function handleAddWishlistItemToCart(item: WishlistItem) {
     });
   }
 
-  function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      void Swal.fire({
-        icon: "warning",
-        title: "Archivo inválido",
-        text: "Selecciona una imagen para tu perfil.",
-        confirmButtonColor: "#521f12",
-        background: "#f6ebd9",
-        color: "#521f12",
-      });
-
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      setProfileForm((currentForm) => {
-        if (!currentForm) return currentForm;
-
-        return {
-          ...currentForm,
-          avatar: String(reader.result),
-        };
-      });
-    };
-
-    reader.readAsDataURL(file);
+  function handleLogout() {
+    logoutUser();
+    setIsEditingProfile(false);
+    setProfileForm(null);
   }
 
-  function updateAddressField(field: keyof UserAddress, value: string) {
-    setProfileForm((currentForm) => {
-      if (!currentForm) return currentForm;
+  function updateProfileField<K extends keyof UserProfile>(
+    key: K,
+    value: UserProfile[K],
+  ) {
+    setProfileForm((currentProfileForm) => {
+      if (!currentProfileForm) return currentProfileForm;
 
       return {
-        ...currentForm,
+        ...currentProfileForm,
+        [key]: value,
+      };
+    });
+  }
+
+  function updateAddressField(
+    key: keyof UserProfile["address"],
+    value: string,
+  ) {
+    setProfileForm((currentProfileForm) => {
+      if (!currentProfileForm) return currentProfileForm;
+
+      return {
+        ...currentProfileForm,
         address: {
-          ...currentForm.address,
-          [field]: value,
+          ...currentProfileForm.address,
+          [key]: value,
         },
       };
     });
   }
 
+  if (isLoadingAccount) {
+    return (
+      <main className={styles.page}>
+        <section className={styles.emptyState}>
+          <div className={styles.emptyIcon}>
+            <Sparkles size={42} />
+          </div>
+
+          <h1>Cargando tu cuenta...</h1>
+
+          <p>Estamos revisando tu sesión con el backend.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!isAuthenticated || !currentUser) {
+    return (
+      <main className={styles.page}>
+        <header className={styles.hero}>
+          <span>Mi cuenta</span>
+
+          <h1>Entra a tu espacio lector</h1>
+
+          <p>
+            Inicia sesión o crea una cuenta para guardar favoritos, comprar
+            libros y participar en foros.
+          </p>
+        </header>
+
+        <section className={styles.authShell}>
+          <div className={styles.authTabs}>
+            <button
+              type="button"
+              className={activeAuthTab === "login" ? styles.activeTab : ""}
+              onClick={() => setActiveAuthTab("login")}
+            >
+              Iniciar sesión
+            </button>
+
+            <button
+              type="button"
+              className={activeAuthTab === "register" ? styles.activeTab : ""}
+              onClick={() => setActiveAuthTab("register")}
+            >
+              Crear cuenta
+            </button>
+          </div>
+
+          {activeAuthTab === "login" ? (
+            <form className={styles.authForm} onSubmit={handleLogin}>
+              <h2>Bienvenida de nuevo</h2>
+
+              <label>
+                Correo electrónico
+                <input
+                  type="email"
+                  value={loginForm.email}
+                  onChange={(event) =>
+                    setLoginForm((currentForm) => ({
+                      ...currentForm,
+                      email: event.target.value,
+                    }))
+                  }
+                  placeholder="tu-correo@email.com"
+                />
+              </label>
+
+              <label>
+                Contraseña
+                <input
+                  type="password"
+                  value={loginForm.password}
+                  onChange={(event) =>
+                    setLoginForm((currentForm) => ({
+                      ...currentForm,
+                      password: event.target.value,
+                    }))
+                  }
+                  placeholder="Tu contraseña"
+                />
+              </label>
+
+              <button type="submit">Entrar</button>
+            </form>
+          ) : (
+            <form className={styles.authForm} onSubmit={handleRegister}>
+              <h2>Crea tu cuenta lectora</h2>
+
+              <label>
+                Nombre
+                <input
+                  type="text"
+                  value={registerForm.name}
+                  onChange={(event) =>
+                    setRegisterForm((currentForm) => ({
+                      ...currentForm,
+                      name: event.target.value,
+                    }))
+                  }
+                  placeholder="Tu nombre"
+                />
+              </label>
+
+              <label>
+                Correo electrónico
+                <input
+                  type="email"
+                  value={registerForm.email}
+                  onChange={(event) =>
+                    setRegisterForm((currentForm) => ({
+                      ...currentForm,
+                      email: event.target.value,
+                    }))
+                  }
+                  placeholder="tu-correo@email.com"
+                />
+              </label>
+
+              <label>
+                Contraseña
+                <input
+                  type="password"
+                  value={registerForm.password}
+                  onChange={(event) =>
+                    setRegisterForm((currentForm) => ({
+                      ...currentForm,
+                      password: event.target.value,
+                    }))
+                  }
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </label>
+
+              <label>
+                Confirmar contraseña
+                <input
+                  type="password"
+                  value={registerForm.confirmPassword}
+                  onChange={(event) =>
+                    setRegisterForm((currentForm) => ({
+                      ...currentForm,
+                      confirmPassword: event.target.value,
+                    }))
+                  }
+                  placeholder="Repite tu contraseña"
+                />
+              </label>
+
+              <button type="submit">Crear cuenta</button>
+            </form>
+          )}
+        </section>
+      </main>
+    );
+  }
+
+  const latestOrders = orders.slice(0, 3);
+  const latestWishlistItems = wishlistItems.slice(0, 4);
+
   return (
     <main className={styles.page}>
-      <section className={styles.profileHero}>
-        <div className={styles.avatarBlock}>
-          {currentProfile.avatar ? (
-            <Image
-              src={currentProfile.avatar}
-              alt={currentProfile.displayName}
-              width={150}
-              height={150}
-            />
-          ) : (
-            <UserRound size={58} />
-          )}
-        </div>
+      <header className={styles.hero}>
+        <span>Mi cuenta</span>
 
-        <div className={styles.profileHeroContent}>
-          <span className={styles.eyebrow}>
-            <Sparkles size={16} />
-            Mi cuenta
-          </span>
+        <h1>Hola, {profileForm?.displayName || currentUser.name}</h1>
 
-          <h1>{currentProfile.displayName}</h1>
-
-          <p>{currentProfile.bio}</p>
-
-          <div className={styles.profileTags}>
-            <span>{currentProfile.readerStatus}</span>
-            <span>{currentProfile.favoriteGenre}</span>
-            {currentProfile.currentReading && (
-              <span>Leyendo: {currentProfile.currentReading}</span>
-            )}
-          </div>
-        </div>
+        <p>
+          Administra tu perfil lector, revisa tus pedidos y consulta tus
+          favoritos.
+        </p>
 
         <button
           type="button"
           className={styles.logoutButton}
-          onClick={() => void handleLogout()}
+          onClick={handleLogout}
         >
           <LogOut size={17} />
           Cerrar sesión
         </button>
-      </section>
+      </header>
 
-      <section className={styles.summaryGrid}>
-        <article className={styles.summaryCard}>
-          <div>
-            <Trophy size={24} />
-          </div>
-          <span>Puntos de foros</span>
-          <strong>{totalForumPoints}</strong>
-        </article>
-
-        <article className={styles.summaryCard}>
-          <div>
-            <Heart size={24} />
-          </div>
-          <span>Wishlist</span>
-          <strong>{totalWishlistItems}</strong>
-        </article>
-
-        <article className={styles.summaryCard}>
-          <div>
-            <ShoppingBag size={24} />
-          </div>
+      <section className={styles.statsGrid}>
+        <article className={styles.statCard}>
+          <PackageCheck size={24} />
           <span>Pedidos</span>
           <strong>{totalOrders}</strong>
         </article>
 
-        <article className={styles.summaryCard}>
-          <div>
-            <BookOpen size={24} />
-          </div>
-          <span>Lectura actual</span>
-          <strong>{currentProfile.currentReading ? "1" : "0"}</strong>
+        <article className={styles.statCard}>
+          <Heart size={24} />
+          <span>Favoritos</span>
+          <strong>{totalWishlistItems}</strong>
+        </article>
+
+        <article className={styles.statCard}>
+          <Trophy size={24} />
+          <span>Puntos en foros</span>
+          <strong>{totalForumPoints}</strong>
         </article>
       </section>
 
-      <section className={styles.accountLayout}>
+      {profileForm && (
         <section className={styles.profileCard}>
           <div className={styles.sectionHeader}>
             <div>
               <span>Perfil lector</span>
-              <h2>Personaliza tu espacio</h2>
+              <h2>Tus datos</h2>
             </div>
 
             <button
               type="button"
               onClick={() => setIsEditingProfile((current) => !current)}
             >
-              <Edit3 size={16} />
               {isEditingProfile ? "Cancelar" : "Editar perfil"}
             </button>
           </div>
 
-          {isEditingProfile ? (
-            <form className={styles.profileForm} onSubmit={handleSaveProfile}>
-              <label className={styles.avatarUpload}>
-                <input type="file" accept="image/*" onChange={handleAvatarChange} />
-
-                <span>
-                  <ImagePlus size={18} />
-                  Cambiar foto de perfil
-                </span>
-              </label>
-
-              <label className={styles.field}>
-                <span>Nombre visible</span>
-                <input
-                  value={profileForm.displayName}
-                  onChange={(event) =>
-                    setProfileForm((currentForm) => {
-                      if (!currentForm) return currentForm;
-
-                      return {
-                        ...currentForm,
-                        displayName: event.target.value,
-                      };
-                    })
-                  }
-                  placeholder="Nombre visible"
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Lectura actual</span>
-                <input
-                  value={profileForm.currentReading}
-                  onChange={(event) =>
-                    setProfileForm((currentForm) => {
-                      if (!currentForm) return currentForm;
-
-                      return {
-                        ...currentForm,
-                        currentReading: event.target.value,
-                      };
-                    })
-                  }
-                  placeholder="Ej. Los Juegos del Hambre"
-                />
-              </label>
-
-              <div className={styles.fieldGrid}>
-                <label className={styles.field}>
-                  <span>Estado lector</span>
-                  <select
-                    value={profileForm.readerStatus}
-                    onChange={(event) =>
-                      setProfileForm((currentForm) => {
-                        if (!currentForm) return currentForm;
-
-                        return {
-                          ...currentForm,
-                          readerStatus: event.target.value as ReaderStatus,
-                        };
-                      })
-                    }
-                  >
-                    {readerStatusOptions.map((status) => (
-                      <option key={status}>{status}</option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className={styles.field}>
-                  <span>Género favorito</span>
-                  <select
-                    value={profileForm.favoriteGenre}
-                    onChange={(event) =>
-                      setProfileForm((currentForm) => {
-                        if (!currentForm) return currentForm;
-
-                        return {
-                          ...currentForm,
-                          favoriteGenre: event.target.value,
-                        };
-                      })
-                    }
-                  >
-                    {genreOptions.map((genre) => (
-                      <option key={genre}>{genre}</option>
-                    ))}
-                  </select>
-                </label>
+          <form className={styles.profileForm} onSubmit={handleSaveProfile}>
+            <div className={styles.avatarPreview}>
+              <div className={styles.avatarCircle}>
+                {profileForm.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={profileForm.avatar} alt={profileForm.displayName} />
+                ) : (
+                  <UserRound size={42} />
+                )}
               </div>
 
-              <section className={styles.addressSection}>
-                <div className={styles.addressHeader}>
-                  <span>Dirección</span>
-                  <h3>Datos de envío</h3>
-                  <p>
-                    Esta dirección podrá usarse después para completar pedidos o entregas.
-                  </p>
-                </div>
+              <div>
+                <h3>{profileForm.displayName}</h3>
+                <p>{currentUser.email}</p>
+              </div>
+            </div>
 
-                <label className={styles.field}>
-                  <span>Calle</span>
+            <div className={styles.formGrid}>
+              <label>
+                Nombre visible
+                <input
+                  type="text"
+                  value={profileForm.displayName}
+                  disabled={!isEditingProfile}
+                  onChange={(event) =>
+                    updateProfileField("displayName", event.target.value)
+                  }
+                />
+              </label>
+
+              <label>
+                Avatar URL
+                <input
+                  type="text"
+                  value={profileForm.avatar ?? ""}
+                  disabled={!isEditingProfile}
+                  onChange={(event) =>
+                    updateProfileField(
+                      "avatar",
+                      event.target.value.trim() || null,
+                    )
+                  }
+                  placeholder="https://..."
+                />
+              </label>
+
+              <label>
+                Lectura actual
+                <input
+                  type="text"
+                  value={profileForm.currentReading}
+                  disabled={!isEditingProfile}
+                  onChange={(event) =>
+                    updateProfileField("currentReading", event.target.value)
+                  }
+                  placeholder="¿Qué estás leyendo?"
+                />
+              </label>
+
+              <label>
+                Estado lector
+                <select
+                  value={profileForm.readerStatus}
+                  disabled={!isEditingProfile}
+                  onChange={(event) =>
+                    updateProfileField(
+                      "readerStatus",
+                      event.target.value as ReaderStatus,
+                    )
+                  }
+                >
+                  {readerStatuses.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                Género favorito
+                <input
+                  type="text"
+                  value={profileForm.favoriteGenre}
+                  disabled={!isEditingProfile}
+                  onChange={(event) =>
+                    updateProfileField("favoriteGenre", event.target.value)
+                  }
+                />
+              </label>
+
+              <label className={styles.fullField}>
+                Bio
+                <textarea
+                  value={profileForm.bio}
+                  disabled={!isEditingProfile}
+                  onChange={(event) =>
+                    updateProfileField("bio", event.target.value)
+                  }
+                />
+              </label>
+            </div>
+
+            <div className={styles.addressSection}>
+              <h3>Dirección de envío</h3>
+
+              <div className={styles.formGrid}>
+                <label>
+                  Calle
                   <input
+                    type="text"
                     value={profileForm.address.street}
-                    onChange={(event) => updateAddressField("street", event.target.value)}
-                    placeholder="Ej. Avenida Siempre Viva"
+                    disabled={!isEditingProfile}
+                    onChange={(event) =>
+                      updateAddressField("street", event.target.value)
+                    }
                   />
                 </label>
 
-                <div className={styles.fieldGrid}>
-                  <label className={styles.field}>
-                    <span>Número exterior</span>
-                    <input
-                      value={profileForm.address.exteriorNumber}
-                      onChange={(event) =>
-                        updateAddressField("exteriorNumber", event.target.value)
-                      }
-                      placeholder="Ej. 742"
-                    />
-                  </label>
-
-                  <label className={styles.field}>
-                    <span>Número interior</span>
-                    <input
-                      value={profileForm.address.interiorNumber}
-                      onChange={(event) =>
-                        updateAddressField("interiorNumber", event.target.value)
-                      }
-                      placeholder="Opcional"
-                    />
-                  </label>
-                </div>
-
-                <label className={styles.field}>
-                  <span>Colonia</span>
+                <label>
+                  Número exterior
                   <input
+                    type="text"
+                    value={profileForm.address.exteriorNumber}
+                    disabled={!isEditingProfile}
+                    onChange={(event) =>
+                      updateAddressField("exteriorNumber", event.target.value)
+                    }
+                  />
+                </label>
+
+                <label>
+                  Número interior
+                  <input
+                    type="text"
+                    value={profileForm.address.interiorNumber}
+                    disabled={!isEditingProfile}
+                    onChange={(event) =>
+                      updateAddressField("interiorNumber", event.target.value)
+                    }
+                  />
+                </label>
+
+                <label>
+                  Colonia
+                  <input
+                    type="text"
                     value={profileForm.address.neighborhood}
+                    disabled={!isEditingProfile}
                     onChange={(event) =>
                       updateAddressField("neighborhood", event.target.value)
                     }
-                    placeholder="Ej. Centro"
                   />
                 </label>
 
-                <div className={styles.fieldGrid}>
-                  <label className={styles.field}>
-                    <span>Ciudad / Municipio</span>
-                    <input
-                      value={profileForm.address.city}
-                      onChange={(event) => updateAddressField("city", event.target.value)}
-                      placeholder="Ej. Pachuca de Soto"
-                    />
-                  </label>
+                <label>
+                  Ciudad
+                  <input
+                    type="text"
+                    value={profileForm.address.city}
+                    disabled={!isEditingProfile}
+                    onChange={(event) =>
+                      updateAddressField("city", event.target.value)
+                    }
+                  />
+                </label>
 
-                  <label className={styles.field}>
-                    <span>Estado</span>
-                    <input
-                      value={profileForm.address.state}
-                      onChange={(event) => updateAddressField("state", event.target.value)}
-                      placeholder="Ej. Hidalgo"
-                    />
-                  </label>
-                </div>
+                <label>
+                  Estado
+                  <input
+                    type="text"
+                    value={profileForm.address.state}
+                    disabled={!isEditingProfile}
+                    onChange={(event) =>
+                      updateAddressField("state", event.target.value)
+                    }
+                  />
+                </label>
 
-                <div className={styles.fieldGrid}>
-                  <label className={styles.field}>
-                    <span>Código postal</span>
-                    <input
-                      value={profileForm.address.zipCode}
-                      onChange={(event) => updateAddressField("zipCode", event.target.value)}
-                      placeholder="Ej. 42000"
-                    />
-                  </label>
+                <label>
+                  Código postal
+                  <input
+                    type="text"
+                    value={profileForm.address.zipCode}
+                    disabled={!isEditingProfile}
+                    onChange={(event) =>
+                      updateAddressField("zipCode", event.target.value)
+                    }
+                  />
+                </label>
 
-                  <label className={styles.field}>
-                    <span>País</span>
-                    <input
-                      value={profileForm.address.country}
-                      onChange={(event) => updateAddressField("country", event.target.value)}
-                      placeholder="México"
-                    />
-                  </label>
-                </div>
+                <label>
+                  País
+                  <input
+                    type="text"
+                    value={profileForm.address.country}
+                    disabled={!isEditingProfile}
+                    onChange={(event) =>
+                      updateAddressField("country", event.target.value)
+                    }
+                  />
+                </label>
 
-                <label className={styles.field}>
-                  <span>Referencias</span>
+                <label className={styles.fullField}>
+                  Referencias
                   <textarea
                     value={profileForm.address.references}
+                    disabled={!isEditingProfile}
                     onChange={(event) =>
                       updateAddressField("references", event.target.value)
                     }
-                    placeholder="Ej. Entre calles, color de fachada, indicaciones de entrega..."
-                    rows={4}
                   />
                 </label>
-              </section>
-
-              <label className={styles.field}>
-                <span>Bio corta</span>
-                <textarea
-                  value={profileForm.bio}
-                  onChange={(event) =>
-                    setProfileForm((currentForm) => {
-                      if (!currentForm) return currentForm;
-
-                      return {
-                        ...currentForm,
-                        bio: event.target.value,
-                      };
-                    })
-                  }
-                  placeholder="Cuéntanos un poco de tu perfil lector"
-                  rows={5}
-                />
-              </label>
-
-              <button type="submit" className={styles.saveButton}>
-                <Save size={17} />
-                Guardar cambios
-              </button>
-            </form>
-          ) : (
-            <div className={styles.profileDetails}>
-              <InfoRow label="Nombre" value={currentProfile.displayName} />
-              <InfoRow
-                label="Lectura actual"
-                value={currentProfile.currentReading || "Sin lectura registrada"}
-              />
-              <InfoRow label="Estado lector" value={currentProfile.readerStatus} />
-              <InfoRow label="Género favorito" value={currentProfile.favoriteGenre} />
-              <InfoRow label="Correo" value={currentUser.email} />
-
-              <div className={styles.addressPreview}>
-                <span>Dirección de envío</span>
-
-                {currentProfile.address.street ||
-                currentProfile.address.city ||
-                currentProfile.address.zipCode ? (
-                  <>
-                    <strong>
-                      {currentProfile.address.street}{" "}
-                      {currentProfile.address.exteriorNumber}
-                      {currentProfile.address.interiorNumber
-                        ? ` Int. ${currentProfile.address.interiorNumber}`
-                        : ""}
-                    </strong>
-
-                    <p>
-                      {currentProfile.address.neighborhood}
-                      {currentProfile.address.neighborhood ? ", " : ""}
-                      {currentProfile.address.city}
-                      {currentProfile.address.city ? ", " : ""}
-                      {currentProfile.address.state}
-                    </p>
-
-                    <p>
-                      C.P. {currentProfile.address.zipCode || "Sin código postal"} ·{" "}
-                      {currentProfile.address.country || "Sin país"}
-                    </p>
-
-                    {currentProfile.address.references && (
-                      <small>{currentProfile.address.references}</small>
-                    )}
-                  </>
-                ) : (
-                  <p>Sin dirección registrada.</p>
-                )}
               </div>
             </div>
-          )}
-        </section>
 
-        <aside className={styles.sidePanel}>
-          <article>
-            <h2>Wishlist</h2>
-
-            {wishlistItems.length === 0 ? (
-              <p>
-                Todavía no tienes favoritos guardados. Puedes agregarlos desde el
-                catálogo con el botón de corazón.
-              </p>
-            ) : (
-              <div className={styles.wishlistPreview}>
-                {wishlistItems.map((item) => (
-                  <div key={item.id} className={styles.wishlistItem}>
-                    <Image
-                      src={item.image}
-                      alt={item.title}
-                      width={70}
-                      height={95}
-                    />
-
-                    <div>
-                      <span>{item.type === "saga" ? "Saga" : "Libro"}</span>
-                      <strong>{item.title}</strong>
-                      <small>{item.subtitle}</small>
-
-                      <div className={styles.wishlistActions}>
-                        <button
-                          type="button"
-                          className={styles.wishlistCartButton}
-                          onClick={() => handleAddWishlistItemToCart(item)}
-                        >
-                          Agregar al carrito
-                        </button>
-
-                        <button
-                          type="button"
-                          className={styles.wishlistRemoveButton}
-                          onClick={() => removeWishlistItem(item.id)}
-                        >
-                          Quitar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            {isEditingProfile && (
+              <button type="submit" className={styles.saveButton}>
+                <Save size={17} />
+                Guardar perfil
+              </button>
             )}
-          </article>
+          </form>
+        </section>
+      )}
 
-          <article>
-            <h2>Pedidos</h2>
+      <section className={styles.dashboardGrid}>
+        <article className={styles.panelCard}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <span>Pedidos recientes</span>
+              <h2>Historial</h2>
+            </div>
 
-            {orders.length === 0 ? (
-              <p>
-                Todavía no tienes pedidos. Cuando finalices una compra desde el carrito,
-                aparecerá aquí tu historial.
-              </p>
-            ) : (
-              <div className={styles.ordersPreview}>
-                {orders.slice(0, 2).map((order) => (
-                  <div key={order.id} className={styles.orderPreviewItem}>
-                    <span>Pedido #{getShortOrderId(order.id)}</span>
+            <Link href="/cuenta/pedidos">Ver todos</Link>
+          </div>
+
+          {latestOrders.length === 0 ? (
+            <div className={styles.emptyMiniState}>
+              <ShoppingBag size={30} />
+              <p>Aún no tienes pedidos.</p>
+            </div>
+          ) : (
+            <div className={styles.ordersPreview}>
+              {latestOrders.map((order) => (
+                <article key={order.id} className={styles.previewItem}>
+                  <div>
+                    <span>
+                      Pedido #{getShortOrderId(order.id, order.orderNumber)}
+                    </span>
+
                     <strong>{currencyFormatter.format(order.paidAmount)}</strong>
+
                     <small>{formatOrderDate(order.createdAt)}</small>
                   </div>
-                ))}
 
-                <Link href="/cuenta/pedidos" className={styles.ordersHistoryLink}>
-                  Ver historial completo
-                </Link>
-              </div>
-            )}
-          </article>
-        </aside>
+                  <small>{order.status}</small>
+                </article>
+              ))}
+            </div>
+          )}
+        </article>
+
+        <article className={styles.panelCard}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <span>Wishlist</span>
+              <h2>Favoritos</h2>
+            </div>
+
+            <Link href="/catalogo">Explorar</Link>
+          </div>
+
+          {latestWishlistItems.length === 0 ? (
+            <div className={styles.emptyMiniState}>
+              <BookHeart size={30} />
+              <p>Aún no guardas favoritos.</p>
+            </div>
+          ) : (
+            <div className={styles.wishlistPreview}>
+              {latestWishlistItems.map((item) => (
+                <article key={item.id} className={styles.wishlistItem}>
+                  <div>
+                    <span>{item.type === "saga" ? "Saga" : "Libro"}</span>
+                    <strong>{item.title}</strong>
+                    <small>{item.subtitle}</small>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => void removeItem(item.id)}
+                  >
+                    Quitar
+                  </button>
+                </article>
+              ))}
+            </div>
+          )}
+        </article>
       </section>
     </main>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={styles.infoRow}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
   );
 }

@@ -109,3 +109,54 @@ export type ApiCartResponse = {
   totalItems: number;
   total: number;
 };
+
+export type ApiOrderStatus =
+  | "CREATED"
+  | "PAID"
+  | "PREPARING"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "CANCELLED";
+
+export type ApiOrderItem = {
+  id: number;
+  type: "BOOK" | "SAGA";
+  bookId: number | null;
+  sagaId: string | null;
+  title: string;
+  author: string;
+  unitPrice: number;
+  quantity: number;
+  subtotal: number;
+  coverImage: string;
+};
+
+export type ApiShippingAddress = {
+  street: string;
+  exteriorNumber: string;
+  interiorNumber: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  references: string;
+};
+
+export type ApiOrderResponse = {
+  id: number;
+  orderNumber: string;
+  status: ApiOrderStatus;
+  totalItems: number;
+  total: number;
+  paymentMethod: string;
+  deliveryNotes: string;
+  shippingAddress: ApiShippingAddress;
+  items: ApiOrderItem[];
+  createdAt: string;
+};
+
+export type ApiCheckoutRequest = {
+  paymentMethod: string;
+  deliveryNotes: string;
+};

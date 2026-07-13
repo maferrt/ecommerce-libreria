@@ -27,7 +27,7 @@ public class ForumReply {
     @JoinColumn(name = "author_id", nullable = false)
     private AppUser author;
 
-    @Column(name = "content_html", nullable = false, columnDefinition = "LONGTEXT")
+    @Column(name = "content_html", nullable = false, columnDefinition = "TEXT")
     private String contentHtml;
 
     @Column(nullable = false)

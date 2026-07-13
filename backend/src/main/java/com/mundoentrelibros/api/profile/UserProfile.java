@@ -27,7 +27,7 @@ public class UserProfile {
     private String displayName;
 
     @Lob
-    @Column(columnDefinition = "LONGTEXT")
+    @Column(columnDefinition = "TEXT")
     private String avatar;
 
     @Column(name = "current_reading", length = 180)

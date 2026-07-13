@@ -30,7 +30,7 @@ public class ForumPost {
     @Column(nullable = false, length = 180)
     private String title;
 
-    @Column(name = "content_html", nullable = false, columnDefinition = "LONGTEXT")
+    @Column(name = "content_html", nullable = false, columnDefinition = "TEXT")
     private String contentHtml;
 
     @Column(nullable = false)

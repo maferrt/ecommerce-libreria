@@ -1,7 +1,6 @@
 import { apiFetch } from "@/lib/api";
 import type {
   ApiAuthResponse,
-  ApiAuthUser,
   ApiLoginRequest,
   ApiRegisterRequest,
 } from "@/lib/api-types";
@@ -23,7 +22,7 @@ export function loginRequest(data: ApiLoginRequest) {
 }
 
 export function getCurrentUserRequest() {
-  return apiFetch<ApiAuthUser>("/api/auth/me", {
+  return apiFetch<ApiAuthResponse["user"]>("/api/auth/me", {
     method: "GET",
   });
 }
